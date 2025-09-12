@@ -167,8 +167,8 @@ model Product {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  categoryId String
-  category   Category @relation(fields: [categoryId], references: [id]) // Relasi many-to-one ke Category
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id]) // Relasi many-to-one ke Category
 
   images Image[] @relation("ProductImages") // Relasi one-to-many ke Image (gambar produk)
 
