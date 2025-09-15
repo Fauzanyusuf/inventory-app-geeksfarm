@@ -21,6 +21,7 @@
     "bcrypt": "^6.0.0",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
+    "prisma-zod-generator": "^1.20.2",
     "winston": "^3.17.0",
     "zod": "^4.1.8"
   },

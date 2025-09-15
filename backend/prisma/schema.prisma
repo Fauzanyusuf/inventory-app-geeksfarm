@@ -1,3 +1,7 @@
+generator zod {
+  provider = "prisma-zod-generator"
+}
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -21,8 +25,8 @@ enum PaymentStatus {
 
 enum OrderStatus {
   PENDING
-  PROCESSING
-  SHIPPING
+  PAID
+  SHIPPED
   COMPLETED
   CANCELLED
 }
@@ -49,283 +53,247 @@ enum AuditAction {
 }
 
 model User {
-  id String @id @default(uuid()) @db.Uuid
-
-  name     String @db.VarChar(100)
-  email    String @unique @db.VarChar(100)
-  password String @db.VarChar(100)
-  phone    String @unique @db.VarChar(20)
-  sex      Sex
+  id       String  @id @default(uuid()) @db.Uuid
+  name     String  @db.VarChar(100)
+  email    String  @unique @db.VarChar(100)
+  password String  @db.VarChar(100)
+  phone    String? @unique @db.VarChar(20)
+  sex      Sex?
 
   verifyToken String? @db.VarChar(100)
-  isVerified  Boolean @default(false)
   isDeleted   Boolean @default(false)
+  isVerified  Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  roleId String
-  role   Role   @relation(fields: [roleId], references: [id]) // Relasi many-to-one ke Role (setiap user punya satu role)
-
-  addresses Address[] // Relasi one-to-many ke Address (user punya banyak alamat)
-
-  orders        Order[] @relation("UserOrders") // Relasi one-to-many ke Order sebagai pemesan
-  courierOrders Order[] @relation("CourierOrders") // Relasi one-to-many ke Order sebagai kurir
-
   createdById  String? @db.Uuid
-  createdBy    User?   @relation("UsersCreatedBy", fields: [createdById], references: [id]) // Relasi self-referential many-to-one (user yang membuat user ini)
-  usersCreated User[]  @relation("UsersCreatedBy") // Relasi one-to-many self-referential (user yang dibuat oleh user ini)
+  createdBy    User?   @relation("UserCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  usersCreated User[]  @relation("UserCreatedBy")
 
-  cart Cart? @relation("UserCart") // Relasi one-to-one ke Cart
+  addresses     Address[]
+  orders        Order[]   @relation("UserOrders")
+  courierOrders Order[]   @relation("CourierOrders")
+
+  roleId String?
+  role   Role?   @relation(fields: [roleId], references: [id], onDelete: SetNull)
+
+  cart Cart? @relation("UserCart")
 
   imageId String? @unique @db.Uuid
-  image   Image?  @relation("UserImage", fields: [imageId], references: [id], onDelete: SetNull) // Relasi one-to-one ke Image (gambar profil), onDelete SetNull
+  image   Image?  @relation("UserImage", fields: [imageId], references: [id], onDelete: SetNull)
 
-  auditLogs AuditLog[] // Relasi one-to-many ke AuditLog (log aksi oleh user)
+  auditLogs AuditLog[]
 
   @@map("users")
 }
 
-model Role {
-  id String @id @default(cuid())
-
-  name String @db.VarChar(50)
+model Cart {
+  id String @id @default(uuid()) @db.Uuid
 
   createdAt DateTime @default(now())
+  updateAt  DateTime @updatedAt
 
-  users       User[] // Relasi one-to-many ke User (role memilik banyak user)
-  permissions AccessPermission[] @relation("RolePermissions") // Relasi many-to-many ke AccessPermission (melalui RolePermissions)
+  userId String @unique @db.Uuid
+  user   User   @relation("UserCart", fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("roles")
+  cartItems CartItem[]
+
+  @@map("carts")
 }
 
-model AccessPermission {
-  id String @id @default(cuid())
+model CartItem {
+  id       String @id @default(uuid()) @db.Uuid
+  quantity Int
 
-  accessKey String @unique @db.VarChar(50)
+  cartId String @db.Uuid
+  cart   Cart   @relation(fields: [cartId], references: [id], onDelete: Cascade)
 
-  isDeleted Boolean @default(false)
+  productId String  @db.Uuid
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  roles Role[] @relation("RolePermissions") // Relasi many-to-many ke Role (melalui RolePermissions)
-
-  @@map("access_permissions")
+  @@map("cart_items")
 }
 
 model Address {
-  id String @id @default(uuid()) @db.Uuid
-
-  label       String @db.VarChar(100)
-  street      String @db.VarChar(100)
-  subDistrict String @db.VarChar(100)
-  district    String @db.VarChar(100)
-  city        String @db.VarChar(100)
-  province    String @db.VarChar(100)
-  country     String @db.VarChar(100)
-  postalCode  String @db.VarChar(10)
+  id          String  @id @default(uuid()) @db.Uuid
+  label       String  @db.VarChar(100)
+  fullAddress String  @db.VarChar(100)
+  subDistrict String? @db.VarChar(100)
+  district    String? @db.VarChar(100)
+  city        String? @db.VarChar(100)
+  province    String  @db.VarChar(100)
+  country     String  @db.VarChar(100)
+  postalCode  String  @db.VarChar(100)
+  latitude    Float
+  longitude   Float
 
   userId String @db.Uuid
-  user   User   @relation(fields: [userId], references: [id]) // Relasi many-to-one ke User (pemilik alamat)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  orders Order[] @relation("OrderDeliveryAddress") // Relasi one-to-many ke Order sebagai alamat pengiriman
+  orders Order[] @relation("OrderDeliveryAddress")
 
   @@map("addresses")
 }
 
-model Category {
-  id String @id @default(cuid())
+model Role {
+  id          String              @id @default(cuid())
+  name        String              @db.VarChar(50)
+  createdAt   DateTime            @default(now())
+  users       User[]
+  permissions AccessPermissions[] @relation("RolePermissions")
 
-  name        String  @db.VarChar(100)
-  description String? @db.Text
+  @@map("roles")
+}
 
-  isDeleted Boolean @default(false)
+model AccessPermissions {
+  id         String  @id @default(cuid())
+  acccessKey String
+  isDeleted  Boolean @default(false)
 
+  role Role[] @relation("RolePermissions")
+
+  @@map("access_permissions")
+}
+
+model Order {
+  id            String        @id @default(uuid()) @db.Uuid
+  paymentStatus PaymentStatus @default(PENDING)
+  orderStatus   OrderStatus   @default(PENDING)
+
+  isDeleted Boolean  @default(false)
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updateAt  DateTime @updatedAt
 
-  products Product[] // Relasi one-to-many ke Product
+  deliveryAddressId String  @db.Uuid
+  deliveryAddress   Address @relation("OrderDeliveryAddress", fields: [deliveryAddressId], references: [id], onDelete: Cascade)
 
-  imageId String? @unique @db.Uuid
-  image   Image?  @relation("CategoryImage", fields: [imageId], references: [id], onDelete: SetNull) // Relasi one-to-one ke Image (gambar kategori), onDelete SetNull
+  userId String @db.Uuid
+  user   User   @relation("UserOrders", fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("categories")
+  courierId String? @db.Uuid
+  courier   User?   @relation("CourierOrders", fields: [courierId], references: [id], onDelete: SetNull)
+
+  items OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id       String @id @default(uuid()) @db.Uuid
+  quantity Int
+
+  orderId String @db.Uuid
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productId String  @db.Uuid
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
 }
 
 model Product {
-  id String @id @default(uuid()) @db.Uuid
-
-  name          String  @db.VarChar(100)
-  barcode       String? @unique @db.VarChar(50)
-  description   String? @db.Text
-  unit          String  @default("pcs") @db.VarChar(20)
-  sellingPrice  BigInt  @db.BigInt
-  totalQuantity Int     @default(0)
-
-  isPerishable Boolean @default(false)
-  isActive     Boolean @default(true)
-  isDeleted    Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(uuid()) @db.Uuid
+  name          String   @db.VarChar(100)
+  barcode       String?  @unique @db.VarChar(50)
+  description   String?  @db.Text
+  unit          String   @default("pcs") @db.VarChar(20)
+  sellingPrice  BigInt   @db.BigInt
+  totalQuantity Int      @default(0)
+  isPerishable  Boolean  @default(false)
+  isActive      Boolean  @default(true)
+  isDeleted     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedat     DateTime @updatedAt
 
   categoryId String?
-  category   Category? @relation(fields: [categoryId], references: [id]) // Relasi many-to-one ke Category
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
-  images Image[] @relation("ProductImages") // Relasi one-to-many ke Image (gambar produk)
-
-  batches        ProductBatch[] // Relasi one-to-many ke ProductBatch
-  stockMovements StockMovement[] // Relasi one-to-many ke StockMovement
-  orderItems     OrderItem[] // Relasi one-to-many ke OrderItem
-  cartItems      CartItem[] // Relasi one-to-many ke CartItem
+  images         Image[]         @relation("ProductImages")
+  batches        ProductBatch[]
+  stockMovements StockMovement[]
+  cartItems      CartItem[]
+  orderItems     OrderItem[]
 
   @@map("products")
 }
 
 model ProductBatch {
-  id String @id @default(uuid()) @db.Uuid
-
+  id        String      @id @default(uuid()) @db.Uuid
   quantity  Int
   costPrice BigInt      @db.BigInt
   status    BatchStatus @default(AVAILABLE)
 
   receivedAt DateTime? @default(now())
   expiredAt  DateTime?
-
-  createdAt DateTime @default(now())
+  createdAt  DateTime  @default(now())
 
   productId String  @db.Uuid
-  product   Product @relation(fields: [productId], references: [id]) // Relasi many-to-one ke Product
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  stockMovements StockMovement[] // Relasi one-to-many ke StockMovement
+  stockMovements StockMovement[]
 
   @@map("product_batches")
 }
 
 model StockMovement {
-  id String @id @default(uuid()) @db.Uuid
-
+  id           String       @id @default(uuid()) @db.Uuid
   quantity     Int
   movementType MovementType
   note         String?      @db.Text
-
-  createdAt DateTime @default(now())
+  createdAt    DateTime     @default(now())
 
   productId String  @db.Uuid
-  product   Product @relation(fields: [productId], references: [id]) // Relasi many-to-one ke Product
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   productBatchId String?       @db.Uuid
-  productBatch   ProductBatch? @relation(fields: [productBatchId], references: [id]) // Relasi many-to-one opsional ke ProductBatch
+  productBatch   ProductBatch? @relation(fields: [productBatchId], references: [id], onDelete: SetNull)
 
   @@map("stock_movements")
 }
 
-model Order {
-  id String @id @default(uuid()) @db.Uuid
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @db.VarChar(100)
+  description String?  @db.Text
+  isDeleted   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  paymentStatus PaymentStatus @default(PENDING)
-  orderStatus   OrderStatus   @default(PENDING)
+  products Product[]
 
-  totalAmount BigInt @db.BigInt
+  imageId String? @unique @db.Uuid
+  image   Image?  @relation("CategoryImage", fields: [imageId], references: [id], onDelete: SetNull)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  deliveryAddressId String  @db.Uuid
-  deliveryAddress   Address @relation("OrderDeliveryAddress", fields: [deliveryAddressId], references: [id]) // Relasi many-to-one ke Address (alamat pengiriman)
-
-  userId String @db.Uuid
-  user   User   @relation("UserOrders", fields: [userId], references: [id]) // Relasi many-to-one ke User (pemesan)
-
-  courierId String? @db.Uuid
-  courier   User?   @relation("CourierOrders", fields: [courierId], references: [id]) // Relasi many-to-one opsional ke User (kurir)
-
-  orderItems OrderItem[] // Relasi one-to-many ke OrderItem
-
-  @@map("orders")
-}
-
-model OrderItem {
-  id String @id @default(uuid()) @db.Uuid
-
-  quantity  Int
-  unitPrice BigInt @db.BigInt
-  subtotal  BigInt @db.BigInt
-
-  createdAt DateTime @default(now())
-
-  orderId String @db.Uuid
-  order   Order  @relation(fields: [orderId], references: [id]) // Relasi many-to-one ke Order
-
-  productId String  @db.Uuid
-  product   Product @relation(fields: [productId], references: [id]) // Relasi many-to-one ke Product
-
-  @@map("order_items")
-}
-
-model Cart {
-  id String @id @default(uuid()) @db.Uuid
-
-  totalAmount BigInt @db.BigInt
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  userId String @unique @db.Uuid
-  user   User   @relation("UserCart", fields: [userId], references: [id]) // Relasi one-to-one ke User
-
-  cartItems CartItem[] // Relasi one-to-many ke CartItem
-
-  @@map("carts")
-}
-
-model CartItem {
-  id String @id @default(uuid()) @db.Uuid
-
-  quantity  Int
-  unitPrice BigInt @db.BigInt
-  subtotal  BigInt @db.BigInt
-
-  createdAt DateTime @default(now())
-
-  cartId    String  @db.Uuid
-  cart      Cart    @relation(fields: [cartId], references: [id]) // Relasi many-to-one ke Cart
-  productId String  @db.Uuid
-  product   Product @relation(fields: [productId], references: [id]) // Relasi many-to-one ke Product
-
-  @@map("cart_items")
+  @@map("categories")
 }
 
 model Image {
-  id String @id @default(uuid()) @db.Uuid
-
+  id        String   @id @default(uuid()) @db.Uuid
   url       String   @db.VarChar(255)
   altText   String?  @db.VarChar(255)
   createdAt DateTime @default(now())
 
-  user User? @relation("UserImage") // Relasi one-to-one opsional ke User (gambar profil)
-
-  category Category? @relation("CategoryImage") // Relasi one-to-one opsional ke Category (gambar kategori)
+  user     User?     @relation("UserImage")
+  category Category? @relation("CategoryImage")
 
   productId String?  @db.Uuid
-  product   Product? @relation("ProductImages", fields: [productId], references: [id]) // Relasi many-to-one opsional ke Product (gambar produk)
+  product   Product? @relation("ProductImages", fields: [productId], references: [id], onDelete: SetNull)
 
   @@map("images")
 }
 
 model AuditLog {
-  id String @id @default(uuid()) @db.Uuid
-
-  action AuditAction
-
-  entity   String @db.VarChar(100)
-  entityId String @db.VarChar(100)
-
+  id        String      @id @default(uuid()) @db.Uuid
+  action    AuditAction
+  entity    String      @db.VarChar(100)
+  entityId  String      @db.VarChar(100)
   oldValues Json?
   newValues Json?
-
-  createdAt DateTime @default(now())
+  createdAt DateTime    @default(now())
 
   userId String? @db.Uuid
-  user   User?   @relation(fields: [userId], references: [id]) // Relasi many-to-one opsional ke User (siapa yang melakukan aksi)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("audit_logs")
 }
