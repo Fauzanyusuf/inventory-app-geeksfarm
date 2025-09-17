@@ -1,4 +1,5 @@
 {
+  "$schema": "https://json.schemastore.org/package",
   "name": "inventory-app-backend",
   "version": "1.0.0",
   "description": "Backend untuk inventory app",
