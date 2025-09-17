@@ -1,4 +1,4 @@
-import { ResponseError } from "./response-error.js";
+import { ResponseError } from "../utils/response-error.js";
 import { logger } from "../application/logging.js";
 
 function sanitizeInput(input) {
@@ -23,7 +23,7 @@ export function validate(schema, request) {
     throw new ResponseError(500, "Invalid validation schema provided");
   }
 
-  const sanitizedRequest = sanitizeInput(input);
+  const sanitizedRequest = sanitizeInput(request);
 
   const result = schema.safeParse(sanitizedRequest);
 

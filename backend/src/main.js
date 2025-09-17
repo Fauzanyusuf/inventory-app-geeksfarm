@@ -2,8 +2,9 @@ import { app } from "./application/app.js";
 import { logger } from "./application/logging.js";
 import "dotenv/config";
 
-app.listen(3000, () => {
-  logger.info(
-    `Server is running on http://${process.env.HOST}:${process.env.PORT}`
-  );
+const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || "localhost";
+
+app.listen(PORT, () => {
+  logger.info(`Server is running on http://${HOST}:${PORT}`);
 });

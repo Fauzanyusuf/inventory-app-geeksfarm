@@ -137,19 +137,19 @@ model Address {
 }
 
 model Role {
-  id          String              @id @default(cuid())
-  name        String              @db.VarChar(50)
-  createdAt   DateTime            @default(now())
+  id          String             @id @default(cuid())
+  name        String             @db.VarChar(50)
+  createdAt   DateTime           @default(now())
   users       User[]
-  permissions AccessPermissions[] @relation("RolePermissions")
+  permissions AccessPermission[] @relation("RolePermissions")
 
   @@map("roles")
 }
 
-model AccessPermissions {
-  id         String  @id @default(cuid())
-  acccessKey String
-  isDeleted  Boolean @default(false)
+model AccessPermission {
+  id        String  @id @default(cuid())
+  accessKey String
+  isDeleted Boolean @default(false)
 
   role Role[] @relation("RolePermissions")
 
@@ -193,18 +193,17 @@ model OrderItem {
 }
 
 model Product {
-  id            String   @id @default(uuid()) @db.Uuid
-  name          String   @db.VarChar(100)
-  barcode       String?  @unique @db.VarChar(50)
-  description   String?  @db.Text
-  unit          String   @default("pcs") @db.VarChar(20)
-  sellingPrice  BigInt   @db.BigInt
-  totalQuantity Int      @default(0)
-  isPerishable  Boolean  @default(false)
-  isActive      Boolean  @default(true)
-  isDeleted     Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedat     DateTime @updatedAt
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String   @db.VarChar(100)
+  barcode      String?  @unique @db.VarChar(50)
+  description  String?  @db.Text
+  unit         String   @default("pcs") @db.VarChar(20)
+  sellingPrice BigInt   @db.BigInt
+  isPerishable Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  isDeleted    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedat    DateTime @updatedAt
 
   categoryId String?
   category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
