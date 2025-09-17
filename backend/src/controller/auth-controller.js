@@ -1,12 +1,12 @@
 import { validate } from "../validation/validate.js";
-import { loginUserValidation } from "../validation/user-validation.js";
-import userService from "../service/user-service.js";
+import { loginAuthSchema } from "../validation/auth-schemas.js";
+import authService from "../service/auth-service.js";
 
 export async function login(req, res, next) {
   try {
-    const data = validate(loginUserValidation, req.body);
+    const data = validate(loginAuthSchema, req.body);
     const { user, accessToken, refreshToken, cookieOptions } =
-      await userService.login(data);
+      await authService.login(data);
 
     res.cookie("refreshToken", refreshToken, cookieOptions);
 
@@ -26,7 +26,7 @@ export async function refresh(req, res, next) {
   try {
     const token = req.cookies?.refreshToken;
 
-    const accessToken = await userService.refresh(token);
+    const accessToken = await authService.refresh(token);
 
     res.status(200).json({ data: { accessToken }, message: "Token refreshed" });
   } catch (err) {
@@ -38,7 +38,7 @@ export async function logout(req, res, next) {
   try {
     const token = req.cookies?.refreshToken;
 
-    await userService.logout(token);
+    await authService.logout(token);
     // clear cookie
     res.clearCookie("refreshToken", { httpOnly: true, sameSite: "lax" });
 

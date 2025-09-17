@@ -1,5 +1,5 @@
 import express from "express";
-import userController from "../controller/user-controller.js";
+import authController from "../controller/auth-controller.js";
 
 const publicRouter = express.Router();
 
@@ -15,6 +15,6 @@ publicRouter.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-publicRouter.post("/users/login", userController.login);
+publicRouter.post("/auth/login", authController.login);
 
 export default publicRouter;

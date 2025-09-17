@@ -1,6 +1,6 @@
 import { prisma } from "../application/database.js";
 import { signRefreshToken, signToken, verifyToken } from "../utils/jwt.js";
-import { isRefreshTokenRevoked } from "../utils/refresh-token-store.js";
+import { isRefreshTokenRevoked, revokeRefreshToken } from "../utils/refresh-token-store.js";
 import { ResponseError } from "../utils/response-error.js";
 import bcrypt from "bcrypt";
 
