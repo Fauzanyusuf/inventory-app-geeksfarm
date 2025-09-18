@@ -6,6 +6,7 @@ import apiRouter from "../route/api.js";
 import errorMiddleware from "../middleware/error-middleware.js";
 import bigintSerializer from "../middleware/bigint-serializer.js";
 import path from "path";
+import { uploadsDir } from "../config/uploads.js";
 
 export const app = express();
 app.use(cors());
@@ -13,9 +14,8 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(bigintSerializer);
 
-// serve uploads statically
-const uploadsPath = path.join(process.cwd(), "uploads");
-app.use("/uploads", express.static(uploadsPath));
+// serve uploads statically (use centralized uploads dir inside backend)
+app.use("/uploads", express.static(uploadsDir));
 
 app.use(publicRouter);
 app.use(apiRouter);

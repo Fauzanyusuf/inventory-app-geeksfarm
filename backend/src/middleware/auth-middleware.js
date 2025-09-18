@@ -3,7 +3,7 @@ import { logger } from "../application/logging.js";
 import { ResponseError } from "../utils/response-error.js";
 import { verifyToken } from "../utils/jwt.js";
 
-export async function authMiddleware(req, res, next) {
+export default async function authMiddleware(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
 

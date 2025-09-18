@@ -21,8 +21,6 @@ export async function createCategoryHandler(req, res, next) {
   }
 }
 
-export default { createCategoryHandler };
-
 export async function listCategoriesHandler(req, res, next) {
   try {
     const { page, limit, search } = parsePagination(req.query);
@@ -80,3 +78,27 @@ export async function getCategoryHandler(req, res, next) {
     next(err);
   }
 }
+
+export async function uploadCategoryImageHandler(req, res, next) {
+  try {
+    const categoryId = req.params.id;
+    if (!req.file) return res.status(400).json({ errors: "No file uploaded" });
+    const result = await categoryService.addImageToCategory(
+      categoryId,
+      req.file,
+      req.user?.id || null
+    );
+    return res.status(201).json({ data: result, message: "Image uploaded" });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export default {
+  createCategoryHandler,
+  listCategoriesHandler,
+  updateCategoryHandler,
+  deleteCategoryHandler,
+  getCategoryHandler,
+  uploadCategoryImageHandler,
+};

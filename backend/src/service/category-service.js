@@ -1,5 +1,6 @@
 import { prisma } from "../application/database.js";
 import { ResponseError } from "../utils/response-error.js";
+import { processAndCreateImage } from "./image-service.js";
 
 export async function createCategory(data, userId = null) {
   try {
@@ -167,4 +168,23 @@ export async function getCategoryById(
     products: itemsWithQuantity,
     meta: { total, page, limit, pages },
   };
+}
+
+export async function addImageToCategory(
+  categoryId,
+  fileInfo,
+  actorUserId = null
+) {
+  const category = await prisma.category.findUnique({
+    where: { id: categoryId },
+  });
+  if (!category) throw new ResponseError(404, "Category not found");
+  const { image, prevImage, owner } = await replaceOneToOneImage(
+    'category',
+    categoryId,
+    fileInfo,
+    actorUserId
+  );
+
+  return { image, category: owner, prevImage };
 }

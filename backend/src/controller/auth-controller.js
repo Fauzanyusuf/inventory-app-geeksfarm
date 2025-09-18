@@ -39,7 +39,7 @@ export async function logout(req, res, next) {
     const token = req.cookies?.refreshToken;
 
     await authService.logout(token);
-    // clear cookie
+    
     res.clearCookie("refreshToken", { httpOnly: true, sameSite: "lax" });
 
     res.status(200).json({ message: "Logged out" });

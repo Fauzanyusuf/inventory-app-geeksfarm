@@ -80,3 +80,12 @@ export async function uploadProductImage(req, res, next) {
     next(err);
   }
 }
+
+export default {
+  createProduct,
+  getProduct,
+  listProducts,
+  updateProduct,
+  deleteProduct,
+  uploadProductImage,
+};

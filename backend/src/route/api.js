@@ -1,14 +1,18 @@
 import express from "express";
-import { authMiddleware } from "../middleware/auth-middleware.js";
-import { rbacMiddleware } from "../middleware/rbac-middleware.js";
+import authMiddleware from "../middleware/auth-middleware.js";
+import rbacMiddleware from "../middleware/rbac-middleware.js";
 import productRouter from "../route/product.js";
 import categoryRouter from "../route/category.js";
+import roleRouter from "../route/role.js";
+import userRouter from "../route/user.js";
 import authController from "../controller/auth-controller.js";
 
 const apiRouter = express.Router();
 apiRouter.use(authMiddleware);
 apiRouter.use("/api/products", productRouter);
 apiRouter.use("/api/categories", categoryRouter);
+apiRouter.use("/api/roles", roleRouter);
+apiRouter.use("/api/users", userRouter);
 
 apiRouter.get("/api/testAuth", (req, res) => {
   res.json({
@@ -27,8 +31,5 @@ apiRouter.get(
     });
   }
 );
-
-apiRouter.post("/auth/refresh", authController.refresh);
-apiRouter.post("/auth/logout", authController.logout);
 
 export default apiRouter;

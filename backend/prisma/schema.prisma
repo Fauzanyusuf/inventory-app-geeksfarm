@@ -268,10 +268,11 @@ model Category {
 }
 
 model Image {
-  id        String   @id @default(uuid()) @db.Uuid
-  url       String   @db.VarChar(255)
-  altText   String?  @db.VarChar(255)
-  createdAt DateTime @default(now())
+  id           String   @id @default(uuid()) @db.Uuid
+  url          String   @db.VarChar(255)
+  thumbnailUrl String?  @db.VarChar(255)
+  altText      String?  @db.VarChar(255)
+  createdAt    DateTime @default(now())
 
   user     User?     @relation("UserImage")
   category Category? @relation("CategoryImage")

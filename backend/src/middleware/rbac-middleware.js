@@ -1,7 +1,7 @@
 import { ResponseError } from "../utils/response-error.js";
 import { logger } from "../application/logging.js";
 
-export function rbacMiddleware(requiredPermissions = []) {
+export default function rbacMiddleware(requiredPermissions = []) {
   return (req, res, next) => {
     try {
       const { permissions: userPermissions = [], id: userId } = req.user || {};

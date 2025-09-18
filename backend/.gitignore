@@ -4,4 +4,4 @@ node_modules
 /prisma/migrations
 /references
 /tests
-/uploads
+/uploads/*

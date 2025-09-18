@@ -52,14 +52,24 @@ export async function createProductWithBatch(payload, userId = null) {
         });
       }
 
+      // determine batch status: EXPIRED if expiredAt <= now, SOLD_OUT if quantity <= 0, otherwise AVAILABLE
+      const now = new Date();
+      const expiredAtDate = b.expiredAt ? new Date(b.expiredAt) : undefined;
+      let batchStatus = "AVAILABLE";
+      if (expiredAtDate && expiredAtDate <= now) {
+        batchStatus = "EXPIRED";
+      } else if (b.quantity <= 0) {
+        batchStatus = "SOLD_OUT";
+      }
+
       const batch = await tx.productBatch.create({
         data: {
           productId: product.id,
           quantity: b.quantity,
           costPrice: costPrice ?? BigInt(0),
-          status: b.status || "AVAILABLE",
+          status: batchStatus,
           receivedAt: b.receivedAt ? new Date(b.receivedAt) : undefined,
-          expiredAt: b.expiredAt ? new Date(b.expiredAt) : undefined,
+          expiredAt: expiredAtDate,
         },
       });
 
@@ -103,6 +113,17 @@ export async function createProductWithBatch(payload, userId = null) {
 export default { createProductWithBatch };
 
 export async function getProductById(id) {
+  // lazily expire any batches for this product whose expiredAt has passed
+  const now = new Date();
+  await prisma.productBatch.updateMany({
+    where: {
+      productId: id,
+      expiredAt: { lte: now },
+      status: { not: "EXPIRED" },
+    },
+    data: { status: "EXPIRED" },
+  });
+
   const product = await prisma.product.findUnique({
     where: { id },
     include: {
@@ -118,9 +139,10 @@ export async function getProductById(id) {
   if (!product) throw new ResponseError(404, "Product not found");
 
   // compute total quantity (sum of non-deleted batches' quantities)
+  // compute total quantity excluding expired batches
   const totalQuantity = await prisma.productBatch.aggregate({
     _sum: { quantity: true },
-    where: { productId: id },
+    where: { productId: id, status: { not: "EXPIRED" } },
   });
 
   return { ...product, totalQuantity: totalQuantity._sum.quantity || 0 };
@@ -161,6 +183,7 @@ export async function addImageToProduct(productId, fileInfo, userId = null) {
     const image = await tx.image.create({
       data: {
         url: imageUrl,
+        thumbnailUrl: thumbUrl || null,
         altText: fileInfo.originalname || null,
         productId: productId,
       },
@@ -204,14 +227,28 @@ export async function listProducts({ page = 1, limit = 10, search } = {}) {
       include: { images: true },
     }),
   ]);
-
-  // compute total quantities for the listed products in a single query
+  // compute productIds for the returned products
   const productIds = items.map((i) => i.id);
+
+  // lazily expire any batches for the returned products whose expiredAt has passed
+  if (productIds.length) {
+    const now = new Date();
+    await prisma.productBatch.updateMany({
+      where: {
+        productId: { in: productIds },
+        expiredAt: { lte: now },
+        status: { not: "EXPIRED" },
+      },
+      data: { status: "EXPIRED" },
+    });
+  }
+
+  // compute total quantities for the listed products in a single query (exclude expired batches)
   const sums = productIds.length
     ? await prisma.productBatch.groupBy({
         by: ["productId"],
         _sum: { quantity: true },
-        where: { productId: { in: productIds } },
+        where: { productId: { in: productIds }, status: { not: "EXPIRED" } },
       })
     : [];
 
@@ -294,4 +331,74 @@ export async function deleteProduct(id, userId = null) {
   });
 
   return result;
+}
+
+/**
+ * Adjust the quantity of a product batch by delta (positive for IN, negative for OUT).
+ * Updates batch.status to SOLD_OUT when quantity reaches 0, and prevents changes to expired batches.
+ */
+export async function adjustBatchQuantity(
+  batchId,
+  delta,
+  userId = null,
+  note = undefined
+) {
+  if (!Number.isFinite(delta)) throw new ResponseError(400, "Invalid delta");
+
+  return prisma.$transaction(async (tx) => {
+    const batch = await tx.productBatch.findUnique({ where: { id: batchId } });
+    if (!batch) throw new ResponseError(404, "Batch not found");
+
+    const now = new Date();
+    if (batch.expiredAt && new Date(batch.expiredAt) <= now) {
+      // mark as EXPIRED if not already
+      if (batch.status !== "EXPIRED") {
+        await tx.productBatch.update({
+          where: { id: batchId },
+          data: { status: "EXPIRED" },
+        });
+      }
+      throw new ResponseError(400, "Batch expired and cannot be used");
+    }
+
+    const newQuantity = batch.quantity + delta;
+    if (newQuantity < 0)
+      throw new ResponseError(400, "Insufficient batch quantity");
+
+    const newStatus = (() => {
+      if (batch.expiredAt && new Date(batch.expiredAt) <= now) return "EXPIRED";
+      if (newQuantity <= 0) return "SOLD_OUT";
+      return "AVAILABLE";
+    })();
+
+    const updatedBatch = await tx.productBatch.update({
+      where: { id: batchId },
+      data: { quantity: newQuantity, status: newStatus },
+    });
+
+    // create stock movement record
+    await tx.stockMovement.create({
+      data: {
+        productId: batch.productId,
+        productBatchId: batchId,
+        quantity: Math.abs(delta),
+        movementType: delta >= 0 ? "IN" : "OUT",
+        note: note || undefined,
+      },
+    });
+
+    // audit
+    await tx.auditLog.create({
+      data: {
+        action: "UPDATE",
+        entity: "ProductBatch",
+        entityId: batchId,
+        oldValues: batch,
+        newValues: updatedBatch,
+        userId: userId || null,
+      },
+    });
+
+    return updatedBatch;
+  });
 }
