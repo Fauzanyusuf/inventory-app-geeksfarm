@@ -57,7 +57,7 @@ export async function listProducts({ page = 1, limit = 10, search } = {}) {
     ]);
 
     // Optimize quantity calculation - use single aggregate query instead of groupBy
-    const productIds = items.map(item => item.id);
+    const productIds = items.map((item) => item.id);
 
     // Since we can't group by productId in aggregate, we need to calculate per product
     // But this is still better than N queries
@@ -68,10 +68,10 @@ export async function listProducts({ page = 1, limit = 10, search } = {}) {
         _sum: { quantity: true },
         where: {
           productId: { in: productIds },
-          status: { not: "EXPIRED" }
+          status: { not: "EXPIRED" },
         },
       });
-      allQuantities.forEach(q => {
+      allQuantities.forEach((q) => {
         quantityMap.set(q.productId, q._sum.quantity || 0);
       });
     }
@@ -81,13 +81,13 @@ export async function listProducts({ page = 1, limit = 10, search } = {}) {
       totalQuantity: quantityMap.get(item.id) || 0,
     }));
 
-    const pages = Math.ceil(total / limit) || 1;
+    const totalPages = Math.ceil(total / limit) || 1;
 
     logger.info(`Listed products: page ${page}, total ${total}`);
 
     return {
       items: itemsWithQuantity,
-      meta: { total, page, limit, pages },
+      meta: { total, page, limit, totalPages },
     };
   } catch (err) {
     logger.error(`Error listing products: ${err.message}`);
@@ -112,10 +112,10 @@ export async function getProductById(productId) {
         updatedAt: true,
         categoryId: true,
         category: {
-          select: { id: true, name: true }
+          select: { id: true, name: true },
         },
         images: {
-          select: { id: true, url: true, thumbnailUrl: true, altText: true }
+          select: { id: true, url: true, thumbnailUrl: true, altText: true },
         },
         // Hindari include batches dan movements untuk mencegah overfetching
         // Gunakan query terpisah jika diperlukan dengan pagination
@@ -269,7 +269,11 @@ export async function addImagesToProduct(productId, filesInfo, userId = null) {
   }
 }
 
-export async function bulkCreateProducts(productsData, userId = null, files = null) {
+export async function bulkCreateProducts(
+  productsData,
+  userId = null,
+  files = null
+) {
   if (!Array.isArray(productsData) || productsData.length === 0) {
     throw new ResponseError(400, "Products data must be a non-empty array");
   }
@@ -277,15 +281,18 @@ export async function bulkCreateProducts(productsData, userId = null, files = nu
   try {
     const results = await prisma.$transaction(async (tx) => {
       // Check for duplicate barcodes inside transaction to prevent race condition
-      const barcodes = productsData.map(p => p.barcode).filter(Boolean);
+      const barcodes = productsData.map((p) => p.barcode).filter(Boolean);
       if (barcodes.length > 0) {
         const existingProducts = await tx.product.findMany({
           where: { barcode: { in: barcodes } },
           select: { barcode: true },
         });
         if (existingProducts.length > 0) {
-          const duplicateBarcodes = existingProducts.map(p => p.barcode);
-          throw new ResponseError(409, `Duplicate barcodes found: ${duplicateBarcodes.join(', ')}`);
+          const duplicateBarcodes = existingProducts.map((p) => p.barcode);
+          throw new ResponseError(
+            409,
+            `Duplicate barcodes found: ${duplicateBarcodes.join(", ")}`
+          );
         }
       }
 
@@ -343,7 +350,9 @@ export async function bulkCreateProducts(productsData, userId = null, files = nu
         let imagesResult = null;
         if (files && files.length > 0) {
           // Calculate images for this product on-demand
-          const imagesPerProduct = Math.floor(files.length / productsData.length);
+          const imagesPerProduct = Math.floor(
+            files.length / productsData.length
+          );
           const remainder = files.length % productsData.length;
           const extraImage = i < remainder ? 1 : 0;
           const startIndex = i * imagesPerProduct + Math.min(i, remainder);
@@ -351,9 +360,14 @@ export async function bulkCreateProducts(productsData, userId = null, files = nu
           const productFiles = files.slice(startIndex, endIndex);
 
           if (productFiles.length > 0) {
-            imagesResult = await processAndCreateImages(productFiles, userId, {
-              productId: product.id,
-            }, tx); // Pass transaction
+            imagesResult = await processAndCreateImages(
+              productFiles,
+              userId,
+              {
+                productId: product.id,
+              },
+              tx
+            ); // Pass transaction
           }
         }
 
@@ -367,14 +381,21 @@ export async function bulkCreateProducts(productsData, userId = null, files = nu
           },
         });
 
-        createdProducts.push({ product, batch, movement, images: imagesResult });
+        createdProducts.push({
+          product,
+          batch,
+          movement,
+          images: imagesResult,
+        });
       }
 
       return createdProducts;
     });
 
     logger.info(
-      `Bulk products created: ${results.length} products, total images: ${files?.length || 0}`
+      `Bulk products created: ${results.length} products, total images: ${
+        files?.length || 0
+      }`
     );
     return results;
   } catch (err) {
@@ -493,11 +514,10 @@ export async function listProductBatchesByProduct(
         skip,
         take: limit,
         orderBy,
-
       }),
     ]);
 
-    const pages = Math.ceil(total / limit) || 1;
+    const totalPages = Math.ceil(total / limit) || 1;
 
     logger.info(
       `Listed batches for product: ${productId}, page ${page}, total ${total}`
@@ -505,7 +525,7 @@ export async function listProductBatchesByProduct(
 
     return {
       items,
-      meta: { total, page, limit, pages },
+      meta: { total, page, limit, totalPages },
     };
   } catch (err) {
     logger.error(
@@ -565,7 +585,7 @@ export async function updateProductBatch(
           },
         });
       }
-      
+
       await tx.auditLog.create({
         data: {
           action: "UPDATE",

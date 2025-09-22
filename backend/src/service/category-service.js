@@ -63,11 +63,11 @@ export async function list({ page = 1, limit = 10, search }) {
       prisma.category.count({ where }),
     ]);
 
-    const pages = Math.ceil(total / limit) || 1;
+    const totalPages = Math.ceil(total / limit) || 1;
 
     logger.info("Categories retrieved:", { count: categories.length, total });
 
-    return { items: categories, meta: { total, page, limit, pages } };
+    return { items: categories, meta: { total, page, limit, totalPages } };
   } catch (error) {
     logger.error("Category list error:", error);
     throw new ResponseError(500, "Failed to retrieve categories");

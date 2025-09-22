@@ -184,7 +184,7 @@ async function getStockMovements({
 
     return {
       movements,
-      pagination: {
+      meta: {
         page,
         limit,
         total,

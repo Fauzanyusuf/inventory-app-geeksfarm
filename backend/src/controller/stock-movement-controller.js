@@ -27,7 +27,8 @@ async function getStockMovements(req, res, next) {
     const result = await stockMovementService.getStockMovements(query);
 
     return res.status(200).json({
-      data: result,
+      data: result.movements,
+      meta: result.meta,
       message: "Stock movements retrieved successfully",
     });
   } catch (err) {

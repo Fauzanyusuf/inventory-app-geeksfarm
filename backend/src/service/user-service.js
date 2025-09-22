@@ -230,11 +230,11 @@ export async function getAllUsers({ page = 1, limit = 10, search } = {}) {
       prisma.user.count({ where }),
     ]);
 
-    const pages = Math.ceil(total / limit) || 1;
+    const totalPages = Math.ceil(total / limit) || 1;
 
     return {
       items: users,
-      meta: { total, page, limit, pages },
+      meta: { total, page, limit, totalPages },
     };
   } catch (err) {
     throw new ResponseError(500, `Failed to get users: ${err.message}`);

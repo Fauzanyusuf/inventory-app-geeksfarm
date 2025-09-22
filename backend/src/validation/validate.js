@@ -28,21 +28,18 @@ export function validate(schema, request) {
   const result = schema.safeParse(sanitizedRequest);
 
   if (!result.success) {
-    const issues = result.error.issues.map((issue) => {
-      const path = issue.path.length ? issue.path.join(".") : "root";
-      return { path, message: issue.message, code: issue.code };
+    const errors = result.error.issues.map((issue) => {
+      const field = issue.path.length ? issue.path.join(".") : "root";
+      return { field, message: issue.message };
     });
 
-    const message = issues.map((i) => `${i.path}: ${i.message}`).join("; ");
-
     logger.error("Validation failed", {
-      message,
-      issues,
+      errors,
       originalRequest: request,
       sanitizedRequest,
     });
 
-    throw new ResponseError(400, message || "Validation failed");
+    throw new ResponseError(400, errors);
   }
 
   return result.data;

@@ -1,7 +1,12 @@
 export class ResponseError extends Error {
   constructor(status, message) {
-    super(message);
+    const messageStr = Array.isArray(message)
+      ? JSON.stringify(message)
+      : String(message);
+
+    super(messageStr);
     this.status = status;
+    this.originalMessage = message;
 
     Error.captureStackTrace(this, this.constructor);
   }
