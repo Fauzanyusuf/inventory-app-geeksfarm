@@ -1,18 +1,41 @@
 import { validate } from "../validation/validate.js";
-import { loginAuthSchema } from "../validation/auth-schemas.js";
+import {
+  loginAuthSchema,
+  registerUserSchema,
+} from "../validation/auth-validation.js";
 import authService from "../service/auth-service.js";
+import { logger } from "../application/logging.js";
+import { cleanupFilesOnError } from "../utils/image-utils.js";
+
+export async function register(req, res, next) {
+  try {
+    const data = validate(registerUserSchema, req.body);
+    const result = await authService.register(data, req.file || null);
+
+    logger.info(`New user registered: ${result.user.email}, image: ${req.file ? "yes" : "no"}`);
+
+    res.status(201).json({
+      data: result,
+      message: "User registered. Awaiting admin approval.",
+    });
+  } catch (err) {
+    if (req.file) {
+      await cleanupFilesOnError([req.file], logger);
+    }
+    next(err);
+  }
+}
 
 export async function login(req, res, next) {
   try {
     const data = validate(loginAuthSchema, req.body);
-    const { user, accessToken, refreshToken, cookieOptions } =
+    const { accessToken, refreshToken, cookieOptions } =
       await authService.login(data);
 
     res.cookie("refreshToken", refreshToken, cookieOptions);
 
     res.status(200).json({
       data: {
-        user,
         accessToken,
       },
       message: "Logged in",
@@ -39,7 +62,7 @@ export async function logout(req, res, next) {
     const token = req.cookies?.refreshToken;
 
     await authService.logout(token);
-    
+
     res.clearCookie("refreshToken", { httpOnly: true, sameSite: "lax" });
 
     res.status(200).json({ message: "Logged out" });
@@ -49,6 +72,7 @@ export async function logout(req, res, next) {
 }
 
 export default {
+  register,
   login,
   refresh,
   logout,

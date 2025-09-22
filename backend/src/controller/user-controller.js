@@ -1,18 +1,89 @@
-import * as userService from "../service/user-service.js";
+import { ResponseError } from "../utils/response-error.js";
+import userService from "../service/user-service.js";
+import { validate } from "../validation/validate.js";
+import {
+  approveUserValidation,
+  updateUserSchema,
+} from "../validation/user-validation.js";
+import { paginationQuerySchema } from "../validation/query-validation.js";
 
-export async function uploadUserImage(req, res, next) {
+export async function listUsers(req, res, next) {
   try {
-    const userId = req.params.id;
-    if (!req.file) return res.status(400).json({ errors: "No file uploaded" });
-    const result = await userService.addImageToUser(
-      userId,
-      req.file,
-      req.user?.id || null
-    );
-    return res.status(201).json({ data: result, message: "Image uploaded" });
+    const { page, limit, search } = validate(paginationQuerySchema, req.query);
+
+    const result = await userService.getAllUsers({ page, limit, search });
+
+    return res.status(200).json({
+      data: result.items,
+      meta: result.meta,
+      message: "Users retrieved successfully",
+    });
   } catch (err) {
     next(err);
   }
 }
 
-export default { uploadUserImage };
+export async function getCurrentUser(req, res, next) {
+  try {
+    const userId = req.user.id;
+    const result = await userService.getUserById(userId);
+    res.status(200).json({ data: result, message: "User data retrieved" });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function updateCurrentUser(req, res, next) {
+  try {
+    const userId = req.user.id;
+    const data = validate(updateUserSchema, req.body);
+    const result = await userService.updateUserById(userId, data, userId);
+    res.status(200).json({ data: result, message: "User data updated" });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function uploadUserImage(req, res, next) {
+  try {
+    const userId = req.params.id;
+    if (!req.file) throw new ResponseError(400, "No file uploaded");
+    const result = await userService.addImageToUser(
+      userId,
+      req.file,
+      req.user?.id || null
+    );
+    res.status(201).json({ data: result, message: "Image uploaded" });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function patchApproveUser(req, res, next) {
+  try {
+    const targetId = req.params.id;
+    const { roleId } = validate(approveUserValidation, req.body);
+    const approver = req.user;
+
+    const result = await userService.approveUserByAdmin(
+      targetId,
+      roleId,
+      approver?.userId || null
+    );
+
+    res.status(200).json({
+      data: result,
+      message: "User approved successfully and role assigned.",
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export default {
+  listUsers,
+  getCurrentUser,
+  updateCurrentUser,
+  uploadUserImage,
+  patchApproveUser,
+};

@@ -12,7 +12,7 @@ export function signToken(payload) {
     throw new ResponseError(400, "Invalid token payload");
   }
 
-  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" });
+  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1d" });
 }
 
 export function signRefreshToken(payload) {

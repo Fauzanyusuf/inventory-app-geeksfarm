@@ -2,15 +2,15 @@ import { ResponseError } from "../utils/response-error.js";
 import { logger } from "../application/logging.js";
 
 function sanitizeInput(input) {
-  if (typeof input === "object" && input !== null) {
+  if (Array.isArray(input)) {
+    return input.map(sanitizeInput);
+  } else if (typeof input === "object" && input !== null) {
     const sanitized = {};
     for (const [key, value] of Object.entries(input)) {
       if (typeof value === "string") {
         sanitized[key] = value.trim();
-      } else if (typeof value === "object") {
-        sanitized[key] = sanitizeInput(value);
       } else {
-        sanitized[key] = value;
+        sanitized[key] = sanitizeInput(value);
       }
     }
     return sanitized;

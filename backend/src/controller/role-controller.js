@@ -1,11 +1,11 @@
-import * as roleService from "../service/role-service.js";
+import roleService from "../service/role-service.js";
 import { validate } from "../validation/validate.js";
-import { updateRolePermissionsSchema } from "../validation/role-validations.js";
+import { updateRolePermissionsSchema } from "../validation/role-validation.js";
 
 export async function listRoles(req, res, next) {
   try {
     const result = await roleService.listRoles();
-    res.json({ data: result });
+    res.status(200).json({ data: result, message: "Roles retrieved" });
   } catch (err) {
     next(err);
   }
@@ -13,10 +13,9 @@ export async function listRoles(req, res, next) {
 
 export async function getRole(req, res, next) {
   try {
-    const id = req.params.id;
-    const result = await roleService.getRoleById(id);
-    if (!result) return res.status(404).json({ errors: "Role not found" });
-    res.json({ data: result });
+    const roleId = req.params.id;
+    const result = await roleService.getRoleById(roleId);
+    res.status(200).json({ data: result, message: "Role retrieved" });
   } catch (err) {
     next(err);
   }
@@ -25,14 +24,20 @@ export async function getRole(req, res, next) {
 export async function updateRolePermissions(req, res, next) {
   try {
     const id = req.params.id;
-    const payload = validate(updateRolePermissionsSchema, req.body);
-    const updated = await roleService.updateRolePermissions(
+    const request = validate(updateRolePermissionsSchema, req.body);
+    const result = await roleService.updateRolePermissions(
       id,
-      payload.permissionIds,
+      request.permissionIds,
       req.user?.id || null
     );
-    res.json({ data: updated, message: "Role permissions updated" });
+    res.status(200).json({ data: result, message: "Role permissions updated" });
   } catch (err) {
     next(err);
   }
 }
+
+export default {
+  listRoles,
+  getRole,
+  updateRolePermissions,
+};

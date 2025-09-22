@@ -2,103 +2,121 @@ import { validate } from "../validation/validate.js";
 import {
   categoryCreateSchema,
   categoryUpdateSchema,
-} from "../validation/category-validations.js";
-import * as categoryService from "../service/category-service.js";
-import { parsePagination } from "../utils/request-utils.js";
+} from "../validation/category-validation.js";
+import { ResponseError } from "../utils/response-error.js";
+import categoryService from "../service/category-service.js";
+import { logger } from "../application/logging.js";
+import { cleanupFilesOnError } from "../utils/image-utils.js";
+import { paginationQuerySchema } from "../validation/query-validation.js";
 
-export async function createCategoryHandler(req, res, next) {
+export async function createCategory(req, res, next) {
   try {
     const data = validate(categoryCreateSchema, req.body);
-    const category = await categoryService.createCategory(
+
+    const result = await categoryService.create(
       data,
-      req.user?.id || null
+      req.user?.id || null,
+      req.file || null
     );
-    return res
-      .status(201)
-      .json({ data: category, message: "Category created" });
-  } catch (err) {
-    next(err);
-  }
-}
 
-export async function listCategoriesHandler(req, res, next) {
-  try {
-    const { page, limit, search } = parsePagination(req.query);
-    const result = await categoryService.listCategories({
-      page,
-      limit,
-      search,
-    });
-    return res.json({ data: result.items, meta: result.meta });
-  } catch (err) {
-    next(err);
-  }
-}
-
-export async function updateCategoryHandler(req, res, next) {
-  try {
-    const id = req.params.id;
-    const payload = validate(categoryUpdateSchema, req.body);
-    const updated = await categoryService.updateCategory(
-      id,
-      payload,
-      req.user?.id || null
+    logger.info(
+      `Category created: ${result.category.id}, image: ${
+        req.file ? "yes" : "no"
+      }`
     );
-    return res.json({ data: updated, message: "Category updated" });
-  } catch (err) {
-    next(err);
-  }
-}
 
-export async function deleteCategoryHandler(req, res, next) {
-  try {
-    const id = req.params.id;
-    await categoryService.deleteCategory(id, req.user?.id || null);
-    return res.json({ message: "Category deleted" });
-  } catch (err) {
-    next(err);
-  }
-}
-
-export async function getCategoryHandler(req, res, next) {
-  try {
-    const id = req.params.id;
-    const { page, limit, search } = parsePagination(req.query);
-    const result = await categoryService.getCategoryById(id, {
-      page,
-      limit,
-      search,
+    return res.status(201).json({
+      data: result,
+      message: "Category created successfully",
     });
-    return res.json({
-      data: result.category,
-      products: result.products,
+  } catch (err) {
+    if (req.file) {
+      await cleanupFilesOnError([req.file], logger);
+    }
+    next(err);
+  }
+}
+
+export async function listCategories(req, res, next) {
+  try {
+    const { page, limit, search } = validate(paginationQuerySchema, req.query);
+
+    const result = await categoryService.list({ page, limit, search });
+
+    return res.status(200).json({
+      data: result.items,
       meta: result.meta,
+      message: "Categories retrieved",
     });
   } catch (err) {
     next(err);
   }
 }
 
-export async function uploadCategoryImageHandler(req, res, next) {
+export async function getCategory(req, res, next) {
   try {
-    const categoryId = req.params.id;
-    if (!req.file) return res.status(400).json({ errors: "No file uploaded" });
-    const result = await categoryService.addImageToCategory(
-      categoryId,
-      req.file,
+    const id = req.params.id;
+    const category = await categoryService.getById(id);
+    return res.status(200).json({
+      data: category,
+      message: "Category retrieved",
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function updateCategory(req, res, next) {
+  try {
+    const id = req.params.id;
+    const data = validate(categoryUpdateSchema, req.body);
+    const result = await categoryService.update(id, data, req.user?.id || null);
+    return res.status(200).json({
+      data: result,
+      message: "Category updated",
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteCategory(req, res, next) {
+  try {
+    const id = req.params.id;
+    await categoryService.remove(id, req.user?.id || null);
+    return res.status(204).json({
+      message: "Category deleted",
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function uploadCategoryImage(req, res, next) {
+  try {
+    const id = req.params.id;
+    if (!req.files || req.files.length === 0) {
+      throw new ResponseError(400, "No files uploaded");
+    }
+    const result = await categoryService.uploadImages(
+      id,
+      req.files,
       req.user?.id || null
     );
-    return res.status(201).json({ data: result, message: "Image uploaded" });
+    return res.status(201).json({
+      data: result,
+      message: "Images uploaded",
+    });
   } catch (err) {
     next(err);
   }
 }
 
 export default {
-  createCategoryHandler,
-  listCategoriesHandler,
-  updateCategoryHandler,
-  deleteCategoryHandler,
-  getCategoryHandler,
-  uploadCategoryImageHandler,
+  createCategory,
+  listCategories,
+  getCategory,
+  updateCategory,
+  deleteCategory,
+  uploadCategoryImage,
 };

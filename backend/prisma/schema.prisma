@@ -1,7 +1,3 @@
-generator zod {
-  provider = "prisma-zod-generator"
-}
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -92,7 +88,7 @@ model Cart {
   id String @id @default(uuid()) @db.Uuid
 
   createdAt DateTime @default(now())
-  updateAt  DateTime @updatedAt
+  updatedAt DateTime @updatedAt
 
   userId String @unique @db.Uuid
   user   User   @relation("UserCart", fields: [userId], references: [id], onDelete: Cascade)
@@ -163,7 +159,7 @@ model Order {
 
   isDeleted Boolean  @default(false)
   createdAt DateTime @default(now())
-  updateAt  DateTime @updatedAt
+  updatedAt DateTime @updatedAt
 
   deliveryAddressId String  @db.Uuid
   deliveryAddress   Address @relation("OrderDeliveryAddress", fields: [deliveryAddressId], references: [id], onDelete: Cascade)
@@ -203,7 +199,7 @@ model Product {
   isActive     Boolean  @default(true)
   isDeleted    Boolean  @default(false)
   createdAt    DateTime @default(now())
-  updatedat    DateTime @updatedAt
+  updatedAt    DateTime @updatedAt
 
   categoryId String?
   category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)

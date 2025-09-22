@@ -1,23 +1,21 @@
 import express from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import publicRouter from "../route/public-api.js";
-import apiRouter from "../route/api.js";
+import routes from "../route/index.js";
 import errorMiddleware from "../middleware/error-middleware.js";
-import bigintSerializer from "../middleware/bigint-serializer.js";
-import path from "path";
+import bigintSerializerMiddleware from "../middleware/bigint-serializer-middleware.js";
 import { uploadsDir } from "../config/uploads.js";
+import { winstonMorgan } from "./logging.js";
 
 export const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
-app.use(bigintSerializer);
+app.use(bigintSerializerMiddleware);
+app.use(winstonMorgan);
 
-// serve uploads statically (use centralized uploads dir inside backend)
 app.use("/uploads", express.static(uploadsDir));
 
-app.use(publicRouter);
-app.use(apiRouter);
+app.use("/api", routes);
 
 app.use(errorMiddleware);

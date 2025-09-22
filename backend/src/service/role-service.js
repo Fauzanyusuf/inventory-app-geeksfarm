@@ -2,58 +2,85 @@ import { prisma } from "../application/database.js";
 import { ResponseError } from "../utils/response-error.js";
 
 export async function listRoles() {
-  return prisma.role.findMany({
-    include: {
-      permissions: {
-        where: { isDeleted: false },
+  try {
+    return prisma.role.findMany({
+      include: {
+        permissions: {
+          where: { isDeleted: false },
+        },
       },
-    },
-    orderBy: { name: "asc" },
-  });
+      orderBy: { name: "asc" },
+    });
+  } catch (err) {
+    if (err instanceof ResponseError) throw err;
+    throw new ResponseError(500, `Failed to list roles: ${err.message}`);
+  }
 }
 
 export async function getRoleById(id) {
-  return prisma.role.findUnique({
-    where: { id },
-    include: {
-      permissions: {
-        where: { isDeleted: false },
+  try {
+    const role = await prisma.role.findUnique({
+      where: { id },
+      include: {
+        permissions: {
+          where: { isDeleted: false },
+        },
       },
-    },
-  });
+    });
+    if (!role) throw new ResponseError(404, "Role not found");
+    return role;
+  } catch (err) {
+    if (err instanceof ResponseError) throw err;
+    if (err.code === "P2025") throw new ResponseError(404, "Role not found");
+    throw new ResponseError(500, `Failed to get role: ${err.message}`);
+  }
 }
 
 export async function updateRolePermissions(roleId, permissionIds, userId) {
-  // Only connect the provided permission IDs, disconnect all others
-  const role = await prisma.role.findUnique({
-    where: { id: roleId },
-    include: { permissions: true },
-  });
-  if (!role) throw new ResponseError(404, "Role not found");
+  try {
+    const role = await prisma.role.findUnique({
+      where: { id: roleId },
+      include: { permissions: true },
+    });
+    if (!role) throw new ResponseError(404, "Role not found");
 
-  // Disconnect all current permissions, then connect the new ones
-  await prisma.role.update({
-    where: { id: roleId },
-    data: {
-      permissions: {
-        set: permissionIds.map((id) => ({ id })),
-      },
-    },
-  });
+    await prisma.$transaction(async (tx) => {
+      await tx.role.update({
+        where: { id: roleId },
+        data: {
+          permissions: {
+            set: permissionIds.map((id) => ({ id })),
+          },
+        },
+      });
 
-  // Optionally, log audit
-  await prisma.auditLog.create({
-    data: {
-      action: "UPDATE",
-      entity: "Role",
-      entityId: roleId,
-      oldValues: JSON.stringify({
-        permissions: role.permissions.map((p) => p.id),
-      }),
-      newValues: JSON.stringify({ permissions: permissionIds }),
-      userId,
-    },
-  });
+      await tx.auditLog.create({
+        data: {
+          action: "UPDATE",
+          entity: "Role",
+          entityId: roleId,
+          oldValues: JSON.stringify({
+            permissions: role.permissions.map((p) => p.id),
+          }),
+          newValues: JSON.stringify({ permissions: permissionIds }),
+          userId,
+        },
+      });
+    });
 
-  return getRoleById(roleId);
+    return getRoleById(roleId);
+  } catch (err) {
+    if (err instanceof ResponseError) throw err;
+    if (err.code === "P2025") throw new ResponseError(404, "Role not found");
+    throw new ResponseError(
+      500,
+      `Failed to update role permissions: ${err.message}`
+    );
+  }
 }
+
+export default {
+  listRoles,
+  getRoleById,
+  updateRolePermissions,
+};

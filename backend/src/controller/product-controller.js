@@ -1,55 +1,129 @@
 import { validate } from "../validation/validate.js";
 import {
-  productCreateSchema,
+  productBulkCreateSchema,
+  productIdParamSchema,
   productUpdateSchema,
-} from "../validation/product-validations.js";
-import * as productService from "../service/product-service.js";
-import { parsePagination } from "../utils/request-utils.js";
-
-export async function createProduct(req, res, next) {
-  try {
-    const data = validate(productCreateSchema, req.body);
-    const result = await productService.createProductWithBatch(
-      data,
-      req.user?.id || null
-    );
-    return res.status(201).json({ data: result, message: "Product created" });
-  } catch (err) {
-    next(err);
-  }
-}
-
-export async function getProduct(req, res, next) {
-  try {
-    const id = req.params.id;
-    const product = await productService.getProductById(id);
-    return res.json({ data: product });
-  } catch (err) {
-    next(err);
-  }
-}
+  updateProductBatchValidation,
+  addProductStockValidation,
+} from "../validation/product-validation.js";
+import { ResponseError } from "../utils/response-error.js";
+import productService from "../service/product-service.js";
+import { logger } from "../application/logging.js";
+import { cleanupFilesOnError } from "../utils/image-utils.js";
+import { paginationQuerySchema } from "../validation/query-validation.js";
 
 export async function listProducts(req, res, next) {
   try {
-    const { page, limit, search } = parsePagination(req.query);
+    const { page, limit, search } = validate(paginationQuerySchema, req.query);
+
     const result = await productService.listProducts({ page, limit, search });
-    return res.json({ data: result.items, meta: result.meta });
+
+    return res.status(200).json({
+      data: result.items,
+      meta: result.meta,
+      message: "Products retrieved",
+    });
   } catch (err) {
+    next(err);
+  }
+} // ✅
+
+export async function getProductById(req, res, next) {
+  try {
+    const productId = validate(productIdParamSchema, req.params.id);
+
+    const result = await productService.getProductById(productId);
+
+    return res.status(200).json({
+      data: result,
+      message: "Product retrieved",
+    });
+  } catch (err) {
+    next(err);
+  }
+} // ✅
+
+export async function createProduct(req, res, next) {
+  try {
+    const data = validate(productBulkCreateSchema, req.body);
+
+    // Deteksi apakah bulk insert atau single insert
+    const isBulk = Array.isArray(data);
+
+    let result;
+    if (isBulk) {
+      // Bulk insert
+      result = await productService.bulkCreateProducts(
+        data,
+        req.user?.id || null,
+        req.files || null
+      );
+
+      logger.info(
+        `Bulk products created: ${result.length} products, total images: ${req.files?.length || 0}`
+      );
+
+      return res.status(201).json({
+        data: result,
+        message: `${result.length} products created successfully`,
+      });
+    } else {
+      // Single insert (existing logic)
+      result = await productService.createProduct(
+        data,
+        req.user?.id || null,
+        req.files || null
+      );
+
+      logger.info(
+        `Product created: ${result.product.id}, images: ${req.files?.length || 0}`
+      );
+
+      return res.status(201).json({
+        data: result,
+        message: "Product created successfully",
+      });
+    }
+  } catch (err) {
+    if (req.files && req.files.length > 0) {
+      await cleanupFilesOnError(req.files, logger);
+    }
     next(err);
   }
 }
 
 export async function updateProduct(req, res, next) {
   try {
-    const id = req.params.id;
-    const payload = validate(productUpdateSchema, req.body);
+    const productId = req.params.id;
+    const data = validate(productUpdateSchema, req.body);
     const updated = await productService.updateProduct(
-      id,
-      payload,
+      productId,
+      data,
       req.user?.id || null
     );
-    return res.json({ data: updated, message: "Product updated" });
+    return res.status(200).json({ data: updated, message: "Product updated" });
   } catch (err) {
+    next(err);
+  }
+}
+
+export async function uploadProductImages(req, res, next) {
+  try {
+    const productId = req.params.id;
+    if (!req.files || req.files.length === 0) {
+      throw new ResponseError(400, "No files uploaded");
+    }
+    const result = await productService.addImagesToProduct(
+      productId,
+      req.files,
+      req.user?.id || null
+    );
+
+    return res.status(201).json({ data: result, message: "Images uploaded" });
+  } catch (err) {
+    if (req.files && req.files.length > 0) {
+      await cleanupFilesOnError(req.files, logger);
+    }
     next(err);
   }
 }
@@ -58,24 +132,51 @@ export async function deleteProduct(req, res, next) {
   try {
     const id = req.params.id;
     await productService.deleteProduct(id, req.user?.id || null);
-    return res.json({ message: "Product deleted" });
+    return res.status(204).json({ message: "Product deleted" });
   } catch (err) {
     next(err);
   }
 }
 
-export async function uploadProductImage(req, res, next) {
+export async function listProductBatchesByProduct(req, res, next) {
   try {
     const productId = req.params.id;
-    if (!req.file) return res.status(400).json({ errors: "No file uploaded" });
-    const result = await productService.addImageToProduct(
-      productId,
-      req.file,
-      req.user?.id || null
-    );
+    const { page, limit, search } = validate(paginationQuerySchema, req.query);
+    const sortByExpired = req.query.sortByExpired === "true";
+    const result = await productService.listProductBatchesByProduct(productId, { page, limit, search, sortByExpired });
+    res.status(200).json({
+      data: result.items,
+      meta: result.meta,
+      message: "Product batches retrieved successfully",
+    });
+  } catch (err) {
+    next(err);
+  }
+}
 
-    // include thumbnail url if available
-    return res.status(201).json({ data: result, message: "Image uploaded" });
+export async function updateProductBatch(req, res, next) {
+  try {
+    const { productId, batchId } = req.params;
+    const data = validate(updateProductBatchValidation, req.body);
+    const result = await productService.updateProductBatch(productId, batchId, data, req.user?.id || null);
+    res.status(200).json({
+      data: result,
+      message: "Product batch updated successfully",
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function addProductStock(req, res, next) {
+  try {
+    const productId = req.params.id;
+    const data = validate(addProductStockValidation, req.body);
+    const result = await productService.addProductStock(productId, data, req.user?.id || null);
+    res.status(201).json({
+      data: result,
+      message: "Stock added successfully",
+    });
   } catch (err) {
     next(err);
   }
@@ -83,9 +184,12 @@ export async function uploadProductImage(req, res, next) {
 
 export default {
   createProduct,
-  getProduct,
+  getProductById,
   listProducts,
   updateProduct,
   deleteProduct,
-  uploadProductImage,
+  uploadProductImages,
+  listProductBatchesByProduct,
+  updateProductBatch,
+  addProductStock,
 };
