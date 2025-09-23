@@ -38,6 +38,25 @@ router.post(
 );
 
 router.get(
+  "/:id/images",
+  rbacMiddleware(["product:read"]),
+  productController.getProductImages
+);
+
+router.patch(
+  "/:id/images",
+  rbacMiddleware(["product:manage"]),
+  uploadArray("images", 5),
+  productController.updateProductImages
+);
+
+router.delete(
+  "/:productId/images/:imgId",
+  rbacMiddleware(["product:manage"]),
+  productController.deleteProductImage
+);
+
+router.get(
   "/:id/batches",
   rbacMiddleware(["inventory:read"]),
   productController.listProductBatchesByProduct

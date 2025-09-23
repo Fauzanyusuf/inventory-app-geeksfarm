@@ -41,26 +41,26 @@ export async function getProductById(req, res, next) {
   } catch (err) {
     next(err);
   }
-} // ✅
+}
 
 export async function createProduct(req, res, next) {
   try {
     const data = validate(productBulkCreateSchema, req.body);
 
-    // Deteksi apakah bulk insert atau single insert
     const isBulk = Array.isArray(data);
 
     let result;
     if (isBulk) {
-      // Bulk insert
       result = await productService.bulkCreateProducts(
         data,
-        req.user?.id || null,
+        req.user?.sub || null,
         req.files || null
       );
 
       logger.info(
-        `Bulk products created: ${result.length} products, total images: ${req.files?.length || 0}`
+        `Bulk products created: ${result.length} products, total images: ${
+          req.files?.length || 0
+        }`
       );
 
       return res.status(201).json({
@@ -68,15 +68,16 @@ export async function createProduct(req, res, next) {
         message: `${result.length} products created successfully`,
       });
     } else {
-      // Single insert (existing logic)
       result = await productService.createProduct(
         data,
-        req.user?.id || null,
+        req.user?.sub || null,
         req.files || null
       );
 
       logger.info(
-        `Product created: ${result.product.id}, images: ${req.files?.length || 0}`
+        `Product created: ${result.product.id}, images: ${
+          req.files?.length || 0
+        }`
       );
 
       return res.status(201).json({
@@ -99,7 +100,7 @@ export async function updateProduct(req, res, next) {
     const updated = await productService.updateProduct(
       productId,
       data,
-      req.user?.id || null
+      req.user?.sub || null
     );
     return res.status(200).json({ data: updated, message: "Product updated" });
   } catch (err) {
@@ -116,7 +117,7 @@ export async function uploadProductImages(req, res, next) {
     const result = await productService.addImagesToProduct(
       productId,
       req.files,
-      req.user?.id || null
+      req.user?.sub || null
     );
 
     return res.status(201).json({ data: result, message: "Images uploaded" });
@@ -128,10 +129,68 @@ export async function uploadProductImages(req, res, next) {
   }
 }
 
+export async function getProductImages(req, res, next) {
+  try {
+    const productId = validate(productIdParamSchema, req.params.id);
+
+    const result = await productService.getProductImages(productId);
+
+    return res.status(200).json({
+      data: result,
+      message: "Product images retrieved",
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function updateProductImages(req, res, next) {
+  try {
+    const productId = validate(productIdParamSchema, req.params.id);
+    const { removeImageIds } = req.body;
+
+    const result = await productService.updateProductImages(
+      productId,
+      req.files || [],
+      removeImageIds || [],
+      req.user?.sub || null
+    );
+
+    return res.status(200).json({
+      data: result,
+      message: "Product images updated",
+    });
+  } catch (err) {
+    if (req.files && req.files.length > 0) {
+      await cleanupFilesOnError(req.files, logger);
+    }
+    next(err);
+  }
+}
+
+export async function deleteProductImage(req, res, next) {
+  try {
+    const { productId, imgId } = req.params;
+
+    const result = await productService.deleteProductImage(
+      productId,
+      imgId,
+      req.user?.sub || null
+    );
+
+    return res.status(200).json({
+      data: result,
+      message: "Product image deleted",
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function deleteProduct(req, res, next) {
   try {
     const id = req.params.id;
-    await productService.deleteProduct(id, req.user?.id || null);
+    await productService.deleteProduct(id, req.user?.sub || null);
     return res.status(204).json({ message: "Product deleted" });
   } catch (err) {
     next(err);
@@ -143,7 +202,12 @@ export async function listProductBatchesByProduct(req, res, next) {
     const productId = req.params.id;
     const { page, limit, search } = validate(paginationQuerySchema, req.query);
     const sortByExpired = req.query.sortByExpired === "true";
-    const result = await productService.listProductBatchesByProduct(productId, { page, limit, search, sortByExpired });
+    const result = await productService.listProductBatchesByProduct(productId, {
+      page,
+      limit,
+      search,
+      sortByExpired,
+    });
     res.status(200).json({
       data: result.items,
       meta: result.meta,
@@ -158,7 +222,12 @@ export async function updateProductBatch(req, res, next) {
   try {
     const { productId, batchId } = req.params;
     const data = validate(updateProductBatchValidation, req.body);
-    const result = await productService.updateProductBatch(productId, batchId, data, req.user?.id || null);
+    const result = await productService.updateProductBatch(
+      productId,
+      batchId,
+      data,
+      req.user?.sub || null
+    );
     res.status(200).json({
       data: result,
       message: "Product batch updated successfully",
@@ -172,7 +241,11 @@ export async function addProductStock(req, res, next) {
   try {
     const productId = req.params.id;
     const data = validate(addProductStockValidation, req.body);
-    const result = await productService.addProductStock(productId, data, req.user?.id || null);
+    const result = await productService.addProductStock(
+      productId,
+      data,
+      req.user?.sub || null
+    );
     res.status(201).json({
       data: result,
       message: "Stock added successfully",
@@ -189,6 +262,9 @@ export default {
   updateProduct,
   deleteProduct,
   uploadProductImages,
+  getProductImages,
+  updateProductImages,
+  deleteProductImage,
   listProductBatchesByProduct,
   updateProductBatch,
   addProductStock,

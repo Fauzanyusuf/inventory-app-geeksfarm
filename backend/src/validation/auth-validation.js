@@ -6,15 +6,23 @@ export const loginAuthSchema = z.object({
 });
 
 export const registerUserSchema = z.object({
-  name: z.string().max(100).optional(),
+  name: z.string().min(2).max(100),
   email: z.email().max(100),
   password: z.string().min(6).max(100),
   phone: z
     .string()
-    .regex(/^(\+62|62|0)[8-9][0-9]{7,11}$/, "Invalid phone number format")
-    .max(20)
-    .optional(),
-  sex: z.enum(["Male", "Female"]).optional(),
+    .transform((val) => (val === "" ? undefined : val))
+    .optional()
+    .refine((val) => !val || /^(\+62|62|0)[8-9][0-9]{7,11}$/.test(val), {
+      message: "Invalid phone number format",
+    }),
+  sex: z
+    .string()
+    .transform((val) => (val === "" ? undefined : val))
+    .optional()
+    .refine((val) => !val || ["MALE", "FEMALE"].includes(val), {
+      message: "Sex must be either MALE or FEMALE",
+    }),
 });
 
 export default { loginAuthSchema, registerUserSchema };

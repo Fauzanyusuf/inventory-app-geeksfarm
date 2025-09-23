@@ -6,7 +6,7 @@ export class ResponseError extends Error {
 
     super(messageStr);
     this.status = status;
-    this.originalMessage = message;
+    this.message = message;
 
     Error.captureStackTrace(this, this.constructor);
   }

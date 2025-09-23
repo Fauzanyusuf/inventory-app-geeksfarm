@@ -1,22 +1,29 @@
 import { logger } from "../application/logging.js";
 import { ResponseError } from "../utils/response-error.js";
+import { ZodError } from "zod";
 
 export default function errorMiddleware(err, req, res, next) {
   if (!err) return next();
 
-  const status = err instanceof ResponseError ? err.status || 500 : 500;
-  let message = err?.originalMessage || err?.message || "Internal Server Error";
+  if (err instanceof ZodError) {
+    const errors = err.issues.map((issue) => ({
+      field: issue.path.join(".") || "root",
+      message: issue.message,
+    }));
+    return res.status(400).json({ errors });
+  }
 
-  // Try to parse JSON string back to array for validation errors
-  if (
-    typeof message === "string" &&
-    message.startsWith("[") &&
-    message.endsWith("]")
-  ) {
+  const status = err instanceof ResponseError ? err.status || 500 : 500;
+  let message = err.originalMessage || err.message || "Internal Server Error";
+
+  if (typeof message === "string" && message.match(/^\[.*\]$/)) {
     try {
       message = JSON.parse(message);
-    } catch {
-      // If parsing fails, keep as string
+    } catch (err) {
+      logger.warn("Failed to parse error message as JSON array", {
+        originalMessage: message,
+        parseError: err.message,
+      });
     }
   }
 
@@ -25,14 +32,9 @@ export default function errorMiddleware(err, req, res, next) {
     message,
   });
 
-  // Handle structured error format (array of {field, message})
-  if (Array.isArray(message)) {
-    return res.status(status).json({ errors: message });
-  }
+  const errors = Array.isArray(message)
+    ? message
+    : [{ field: "general", message }];
 
-  // Handle legacy string error format for backward compatibility
-  // Convert to structured format
-  return res.status(status).json({
-    errors: [{ field: "general", message: message }],
-  });
+  return res.status(status).json({ errors });
 }

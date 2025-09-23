@@ -15,9 +15,9 @@ export default async function authMiddleware(req, res, next) {
 
     const payload = verifyToken(token);
 
-    const userId = payload?.userId;
+    const userId = payload?.sub;
 
-    if (!userId) {
+    if (!userId ) {
       throw new ResponseError(401, "Invalid token payload");
     }
 
@@ -43,7 +43,7 @@ export default async function authMiddleware(req, res, next) {
     const permissions = user.role?.permissions?.map((p) => p.accessKey) || [];
 
     req.user = {
-      id: user.id,
+      sub: userId,
       email: user.email,
       name: user.name,
       roleId: user.roleId,

@@ -17,6 +17,24 @@ export async function listAccessPermissions(req, res, next) {
   }
 }
 
+export async function getAccessPermission(req, res, next) {
+  try {
+    const permissionId = req.params.id;
+    const result = await accessPermissionService.getAccessPermissionById(permissionId);
+
+    logger.info(`Access permission retrieved: ${permissionId}`);
+
+    res.status(200).json({
+      data: result,
+      message: "Access permission retrieved successfully",
+    });
+  } catch (err) {
+    logger.error("Access permission get error:", err);
+    next(err);
+  }
+}
+
 export default {
   listAccessPermissions,
+  getAccessPermission,
 };

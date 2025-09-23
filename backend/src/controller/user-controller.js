@@ -25,7 +25,17 @@ export async function listUsers(req, res, next) {
 
 export async function getCurrentUser(req, res, next) {
   try {
-    const userId = req.user.id;
+    const userId = req.user.sub;
+    const result = await userService.getUserById(userId);
+    res.status(200).json({ data: result, message: "User data retrieved" });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getUserById(req, res, next) {
+  try {
+    const userId = req.params.id;
     const result = await userService.getUserById(userId);
     res.status(200).json({ data: result, message: "User data retrieved" });
   } catch (err) {
@@ -35,7 +45,7 @@ export async function getCurrentUser(req, res, next) {
 
 export async function updateCurrentUser(req, res, next) {
   try {
-    const userId = req.user.id;
+    const userId = req.user.sub;
     const data = validate(updateUserSchema, req.body);
     const result = await userService.updateUserById(userId, data, userId);
     res.status(200).json({ data: result, message: "User data updated" });
@@ -46,12 +56,12 @@ export async function updateCurrentUser(req, res, next) {
 
 export async function uploadUserImage(req, res, next) {
   try {
-    const userId = req.params.id;
+    const userId = req.user.sub;
     if (!req.file) throw new ResponseError(400, "No file uploaded");
     const result = await userService.addImageToUser(
       userId,
       req.file,
-      req.user?.id || null
+      req.user?.sub || null
     );
     res.status(201).json({ data: result, message: "Image uploaded" });
   } catch (err) {
@@ -68,7 +78,7 @@ export async function patchApproveUser(req, res, next) {
     const result = await userService.approveUserByAdmin(
       targetId,
       roleId,
-      approver?.userId || null
+      approver?.sub || null
     );
 
     res.status(200).json({
@@ -80,10 +90,43 @@ export async function patchApproveUser(req, res, next) {
   }
 }
 
+export async function getUserImage(req, res, next) {
+  try {
+    const userId = req.user.sub;
+
+    const result = await userService.getUserImage(userId);
+
+    return res.status(200).json({
+      data: result,
+      message: "User image retrieved",
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteUserImage(req, res, next) {
+  try {
+    const userId = req.user.sub;
+
+    const result = await userService.deleteUserImage(userId, userId);
+
+    return res.status(200).json({
+      data: result,
+      message: "User image deleted",
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export default {
   listUsers,
   getCurrentUser,
+  getUserById,
   updateCurrentUser,
   uploadUserImage,
+  getUserImage,
+  deleteUserImage,
   patchApproveUser,
 };

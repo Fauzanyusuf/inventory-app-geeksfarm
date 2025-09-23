@@ -29,7 +29,9 @@ async function assignPermissionsToRole(roleId, permIds) {
     });
 
     if (!roleWithPerms) {
-      console.log(`Role with id ${roleId} not found, skipping permission assignment`);
+      console.log(
+        `Role with id ${roleId} not found, skipping permission assignment`
+      );
       return;
     }
 
@@ -45,7 +47,10 @@ async function assignPermissionsToRole(roleId, permIds) {
       data: { permissions: { connect: toConnect } },
     });
   } catch (error) {
-    console.log(`Error assigning permissions to role ${roleId}:`, error.message);
+    console.log(
+      `Error assigning permissions to role ${roleId}:`,
+      error.message
+    );
   }
 }
 
@@ -92,8 +97,13 @@ async function main() {
   const staffRole = await getOrCreateRole("STAFF");
 
   const allPerms = [
-    "user:read", "user:manage", "product:read", "product:manage",
-    "inventory:read", "inventory:manage", "report:read"
+    "user:read",
+    "user:manage",
+    "product:read",
+    "product:manage",
+    "inventory:read",
+    "inventory:manage",
+    "report:read",
   ];
 
   const permIds = [];
@@ -104,7 +114,13 @@ async function main() {
 
   // Assign permissions to roles
   await assignPermissionsToRole(superAdminRole.id, permIds);
-  await assignPermissionsToRole(adminRole.id, [permIds[2], permIds[3], permIds[4], permIds[5], permIds[6]]); // product, inventory, report
+  await assignPermissionsToRole(adminRole.id, [
+    permIds[2],
+    permIds[3],
+    permIds[4],
+    permIds[5],
+    permIds[6],
+  ]); // product, inventory, report
   await assignPermissionsToRole(staffRole.id, [permIds[2], permIds[4]]); // product:read, inventory:read
 
   // Create users if they don't exist
@@ -113,21 +129,21 @@ async function main() {
     email: "superadmin@example.com",
     name: "Super Admin",
     roleId: superAdminRole.id,
-    password: "superpassword"
+    password: "superpassword",
   });
 
   await createOrUpdateUser({
     email: "admin@example.com",
     name: "Admin User",
     roleId: adminRole.id,
-    password: "adminpassword"
+    password: "adminpassword",
   });
 
   await createOrUpdateUser({
     email: "staff@example.com",
     name: "Staff User",
     roleId: staffRole.id,
-    password: "staffpassword"
+    password: "staffpassword",
   });
 
   // Get all users for seeding other data
@@ -137,10 +153,26 @@ async function main() {
 
   // --- Categories ---
   const categoryNames = [
-    "Electronics", "Groceries", "Clothing", "Furniture", "Books",
-    "Toys", "Beauty", "Sports", "Automotive", "Garden",
-    "Office Supplies", "Health", "Pet Supplies", "Jewelry", "Music",
-    "Tools", "Footwear", "Baby Products", "Food & Beverage", "Art"
+    "Electronics",
+    "Groceries",
+    "Clothing",
+    "Furniture",
+    "Books",
+    "Toys",
+    "Beauty",
+    "Sports",
+    "Automotive",
+    "Garden",
+    "Office Supplies",
+    "Health",
+    "Pet Supplies",
+    "Jewelry",
+    "Music",
+    "Tools",
+    "Footwear",
+    "Baby Products",
+    "Food & Beverage",
+    "Art",
   ];
 
   const categories = [];
@@ -165,7 +197,7 @@ async function main() {
         barcode: `BCODE${100000 + i}`,
         description: `This is the description for Product ${i + 1}`,
         unit: "pcs",
-        sellingPrice: BigInt(10000 + i * 500),
+        sellingPrice: 10000 + i * 500,
         isPerishable: i % 2 === 0,
         isActive: true,
         isDeleted: false,
@@ -183,10 +215,11 @@ async function main() {
       data: {
         productId: product.id,
         quantity: 50 + i * 10,
-        costPrice: BigInt(5000 + i * 200),
+        costPrice: 5000 + i * 200,
         status: "AVAILABLE",
-        receivedAt: new Date(Date.now() - (i * 86400000)), // i days ago
-        expiredAt: i % 2 === 0 ? new Date(Date.now() + ((i + 1) * 86400000)) : null,
+        receivedAt: new Date(Date.now() - i * 86400000), // i days ago
+        expiredAt:
+          i % 2 === 0 ? new Date(Date.now() + (i + 1) * 86400000) : null,
       },
     });
     batches.push(batch);
@@ -241,8 +274,24 @@ async function main() {
         userId: user.id,
         courierId: courier.id,
         deliveryAddressId: address.id,
-        paymentStatus: i % 4 === 0 ? "COMPLETED" : i % 4 === 1 ? "PENDING" : i % 4 === 2 ? "FAILED" : "REFUNDED",
-        orderStatus: i % 5 === 0 ? "PAID" : i % 5 === 1 ? "PENDING" : i % 5 === 2 ? "SHIPPED" : i % 5 === 3 ? "COMPLETED" : "CANCELLED",
+        paymentStatus:
+          i % 4 === 0
+            ? "COMPLETED"
+            : i % 4 === 1
+            ? "PENDING"
+            : i % 4 === 2
+            ? "FAILED"
+            : "REFUNDED",
+        orderStatus:
+          i % 5 === 0
+            ? "PAID"
+            : i % 5 === 1
+            ? "PENDING"
+            : i % 5 === 2
+            ? "SHIPPED"
+            : i % 5 === 3
+            ? "COMPLETED"
+            : "CANCELLED",
       },
     });
     orders.push(order);
@@ -310,7 +359,14 @@ async function main() {
   }
 
   // --- Audit Logs ---
-  const auditActions = ["CREATE", "UPDATE", "DELETE", "LOGIN", "LOGOUT", "OTHER"];
+  const auditActions = [
+    "CREATE",
+    "UPDATE",
+    "DELETE",
+    "LOGIN",
+    "LOGOUT",
+    "OTHER",
+  ];
   for (let i = 0; i < 20; i++) {
     const user = users[i % users.length];
     await prisma.auditLog.create({

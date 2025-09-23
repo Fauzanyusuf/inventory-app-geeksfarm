@@ -93,22 +93,9 @@ model Cart {
   userId String @unique @db.Uuid
   user   User   @relation("UserCart", fields: [userId], references: [id], onDelete: Cascade)
 
-  cartItems CartItem[]
+  cartItems Json?
 
   @@map("carts")
-}
-
-model CartItem {
-  id       String @id @default(uuid()) @db.Uuid
-  quantity Int
-
-  cartId String @db.Uuid
-  cart   Cart   @relation(fields: [cartId], references: [id], onDelete: Cascade)
-
-  productId String  @db.Uuid
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-
-  @@map("cart_items")
 }
 
 model Address {
@@ -170,22 +157,9 @@ model Order {
   courierId String? @db.Uuid
   courier   User?   @relation("CourierOrders", fields: [courierId], references: [id], onDelete: SetNull)
 
-  items OrderItem[]
+  orderItems Json?
 
   @@map("orders")
-}
-
-model OrderItem {
-  id       String @id @default(uuid()) @db.Uuid
-  quantity Int
-
-  orderId String @db.Uuid
-  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  productId String  @db.Uuid
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-
-  @@map("order_items")
 }
 
 model Product {
@@ -194,7 +168,7 @@ model Product {
   barcode      String?  @unique @db.VarChar(50)
   description  String?  @db.Text
   unit         String   @default("pcs") @db.VarChar(20)
-  sellingPrice BigInt   @db.BigInt
+  sellingPrice Decimal @db.Decimal(10, 0)
   isPerishable Boolean  @default(false)
   isActive     Boolean  @default(true)
   isDeleted    Boolean  @default(false)
@@ -207,8 +181,6 @@ model Product {
   images         Image[]         @relation("ProductImages")
   batches        ProductBatch[]
   stockMovements StockMovement[]
-  cartItems      CartItem[]
-  orderItems     OrderItem[]
 
   @@map("products")
 }
@@ -216,7 +188,7 @@ model Product {
 model ProductBatch {
   id        String      @id @default(uuid()) @db.Uuid
   quantity  Int
-  costPrice BigInt      @db.BigInt
+  costPrice Decimal @db.Decimal(10, 0)
   status    BatchStatus @default(AVAILABLE)
 
   receivedAt DateTime? @default(now())

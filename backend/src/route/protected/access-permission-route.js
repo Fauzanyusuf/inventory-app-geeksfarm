@@ -10,4 +10,10 @@ router.get(
   accessPermissionController.listAccessPermissions
 );
 
+router.get(
+  "/:id",
+  rbacMiddleware(["user:read"]),
+  accessPermissionController.getAccessPermission
+);
+
 export default router;

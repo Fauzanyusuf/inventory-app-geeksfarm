@@ -7,7 +7,6 @@ import salesRoute from "./sales-route.js";
 import auditLogRoute from "./audit-log-route.js";
 import roleRoute from "./role-route.js";
 import accessPermissionRoute from "./access-permission-route.js";
-import imageRoute from "./image-route.js";
 import authMiddleware from "../../middleware/auth-middleware.js";
 
 const router = express.Router();
@@ -22,6 +21,5 @@ router.use("/sales", salesRoute);
 router.use("/audit-logs", auditLogRoute);
 router.use("/roles", roleRoute);
 router.use("/access-permissions", accessPermissionRoute);
-router.use("/images", imageRoute);
 
 export default router;

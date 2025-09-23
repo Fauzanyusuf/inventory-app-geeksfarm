@@ -10,12 +10,13 @@ router.get("/", rbacMiddleware(["user:read"]), userController.listUsers);
 router.get("/me", userController.getCurrentUser);
 router.patch("/me", userController.updateCurrentUser);
 
-router.post(
-  "/:id/image",
-  rbacMiddleware(["user:manage"]),
-  uploadSingle("image"),
-  userController.uploadUserImage
-);
+router.put("/me/image", uploadSingle("image"), userController.uploadUserImage);
+
+router.get("/me/image", userController.getUserImage);
+
+router.delete("/me/image", userController.deleteUserImage);
+
+router.get("/:id", rbacMiddleware(["user:read"]), userController.getUserById);
 
 router.patch(
   "/:id/approve",

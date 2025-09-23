@@ -15,7 +15,7 @@ export async function createCategory(req, res, next) {
 
     const result = await categoryService.create(
       data,
-      req.user?.id || null,
+      req.user?.sub || null,
       req.file || null
     );
 
@@ -44,7 +44,7 @@ export async function listCategories(req, res, next) {
     const result = await categoryService.list({ page, limit, search });
 
     return res.status(200).json({
-      data: result.items,
+      data: result.data,
       meta: result.meta,
       message: "Categories retrieved",
     });
@@ -70,7 +70,7 @@ export async function updateCategory(req, res, next) {
   try {
     const id = req.params.id;
     const data = validate(categoryUpdateSchema, req.body);
-    const result = await categoryService.update(id, data, req.user?.id || null);
+    const result = await categoryService.update(id, data, req.user?.sub || null);
     return res.status(200).json({
       data: result,
       message: "Category updated",
@@ -83,7 +83,7 @@ export async function updateCategory(req, res, next) {
 export async function deleteCategory(req, res, next) {
   try {
     const id = req.params.id;
-    await categoryService.remove(id, req.user?.id || null);
+    await categoryService.remove(id, req.user?.sub || null);
     return res.status(204).json({
       message: "Category deleted",
     });
@@ -95,17 +95,46 @@ export async function deleteCategory(req, res, next) {
 export async function uploadCategoryImage(req, res, next) {
   try {
     const id = req.params.id;
-    if (!req.files || req.files.length === 0) {
-      throw new ResponseError(400, "No files uploaded");
+    if (!req.file) {
+      throw new ResponseError(400, "No file uploaded");
     }
-    const result = await categoryService.uploadImages(
+    const result = await categoryService.uploadImage(
       id,
-      req.files,
-      req.user?.id || null
+      req.file,
+      req.user?.sub || null
     );
     return res.status(201).json({
       data: result,
-      message: "Images uploaded",
+      message: "Image uploaded",
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getCategoryImage(req, res, next) {
+  try {
+    const categoryId = req.params.id;
+
+    const result = await categoryService.getCategoryImage(categoryId);
+
+    return res.status(200).json({
+      data: result,
+      message: "Category image retrieved",
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteCategoryImage(req, res, next) {
+  try {
+    const categoryId = req.params.id;
+
+    await categoryService.deleteCategoryImage(categoryId, req.user?.sub || null);
+
+    return res.status(200).json({
+      message: "Category image deleted",
     });
   } catch (err) {
     next(err);
@@ -119,4 +148,6 @@ export default {
   updateCategory,
   deleteCategory,
   uploadCategoryImage,
+  getCategoryImage,
+  deleteCategoryImage,
 };

@@ -24,7 +24,7 @@ router.post(
   categoryController.createCategory
 );
 
-router.put(
+router.patch(
   "/:id",
   rbacMiddleware(["product:manage"]),
   uploadSingle("image"),
@@ -37,11 +37,23 @@ router.delete(
   categoryController.deleteCategory
 );
 
-router.post(
+router.put(
   "/:id/image",
   rbacMiddleware(["product:manage"]),
   uploadSingle("image"),
   categoryController.uploadCategoryImage
+);
+
+router.get(
+  "/:id/image",
+  rbacMiddleware(["product:read"]),
+  categoryController.getCategoryImage
+);
+
+router.delete(
+  "/:id/image",
+  rbacMiddleware(["product:manage"]),
+  categoryController.deleteCategoryImage
 );
 
 export default router;

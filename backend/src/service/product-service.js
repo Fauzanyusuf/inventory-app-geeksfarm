@@ -1,21 +1,120 @@
 import { prisma } from "../application/database.js";
 import { ResponseError } from "../utils/response-error.js";
 import { logger } from "../application/logging.js";
-import { processAndCreateImages } from "./image-service.js";
-
-function safeBigInt(value, fieldName) {
-  try {
-    return BigInt(value);
-  } catch {
-    throw new ResponseError(400, `${fieldName} must be a valid number`);
-  }
-}
+import { processAndCreateImages, deleteImage } from "./image-service.js";
+import { createAuditLog } from "../utils/audit-utils.js";
 
 function getBatchStatus(expiredAt, quantity) {
   const now = new Date();
-  if (expiredAt && expiredAt <= now) return "EXPIRED";
-  if (quantity <= 0) return "SOLD_OUT";
-  return "AVAILABLE";
+  return expiredAt && expiredAt <= now
+    ? "EXPIRED"
+    : quantity <= 0
+    ? "SOLD_OUT"
+    : "AVAILABLE";
+}
+
+async function createProductWithBatch(
+  tx,
+  productData,
+  batchData,
+  movementNote,
+  userId
+) {
+  const product = await tx.product.create({
+    data: productData,
+  });
+
+  const batchStatus = getBatchStatus(batchData.expiredAt, batchData.quantity);
+
+  const batch = await tx.productBatch.create({
+    data: {
+      productId: product.id,
+      quantity: batchData.quantity,
+      costPrice: batchData.costPrice,
+      status: batchStatus,
+      receivedAt: batchData.receivedAt,
+      expiredAt: batchData.expiredAt,
+    },
+  });
+
+  const movement = await tx.stockMovement.create({
+    data: {
+      productId: product.id,
+      productBatchId: batch.id,
+      quantity: batchData.quantity,
+      movementType: "IN",
+      note:
+        movementNote ||
+        `Initial stock: ${batchData.quantity} units for new product: ${product.name}`,
+    },
+  });
+
+  await createAuditLog(tx, {
+    action: "CREATE",
+    entity: "Product",
+    entityId: product.id,
+    newValues: { product, batch, movement },
+    userId,
+  });
+
+  return { product, batch, movement };
+}
+
+function distributeFilesEvenly(files, numProducts) {
+  if (!files || files.length === 0) return Array(numProducts).fill([]);
+
+  const result = [];
+  const baseCount = Math.floor(files.length / numProducts);
+  const remainder = files.length % numProducts;
+
+  let fileIndex = 0;
+  for (let i = 0; i < numProducts; i++) {
+    const count = baseCount + (i < remainder ? 1 : 0);
+    result.push(files.slice(fileIndex, fileIndex + count));
+    fileIndex += count;
+  }
+
+  return result;
+}
+
+async function createSingleProduct(
+  tx,
+  productData,
+  batchData,
+  movementNote,
+  productFiles,
+  userId
+) {
+  const { product, batch, movement } = await createProductWithBatch(
+    tx,
+    productData,
+    batchData,
+    movementNote,
+    userId
+  );
+
+  let imagesResult = null;
+  if (productFiles && productFiles.length > 0) {
+    imagesResult = await processAndCreateImages(
+      productFiles,
+      userId,
+      { productId: product.id },
+      tx
+    );
+
+    // Additional audit log for images
+    if (imagesResult) {
+      await createAuditLog(tx, {
+        action: "UPDATE",
+        entity: "Product",
+        entityId: product.id,
+        newValues: { images: imagesResult },
+        userId,
+      });
+    }
+  }
+
+  return { product, batch, movement, images: imagesResult };
 }
 
 export async function listProducts({ page = 1, limit = 10, search } = {}) {
@@ -30,68 +129,54 @@ export async function listProducts({ page = 1, limit = 10, search } = {}) {
       ];
     }
 
-    const [items, total] = await Promise.all([
+    const [products, total] = await Promise.all([
       prisma.product.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: "desc" },
+        orderBy: { createdAt: "asc" },
         select: {
           id: true,
           name: true,
-          barcode: true,
           description: true,
           unit: true,
           sellingPrice: true,
-          isPerishable: true,
-          isActive: true,
-          createdAt: true,
-          updatedAt: true,
-          categoryId: true,
+          category: { select: { id: true, name: true } },
           images: {
-            select: { id: true, url: true, thumbnailUrl: true, altText: true },
+            select: { id: true, url: true, thumbnailUrl: true },
+          },
+          batches: {
+            select: { quantity: true },
+            where: { status: { not: "EXPIRED" } },
           },
         },
       }),
       prisma.product.count({ where }),
     ]);
 
-    // Optimize quantity calculation - use single aggregate query instead of groupBy
-    const productIds = items.map((item) => item.id);
+    const productsWithQuantity = products.map((product) => {
+      const totalQuantity = product.batches.reduce(
+        (sum, batch) => sum + batch.quantity,
+        0
+      );
 
-    // Since we can't group by productId in aggregate, we need to calculate per product
-    // But this is still better than N queries
-    const quantityMap = new Map();
-    if (productIds.length > 0) {
-      const allQuantities = await prisma.productBatch.groupBy({
-        by: ["productId"],
-        _sum: { quantity: true },
-        where: {
-          productId: { in: productIds },
-          status: { not: "EXPIRED" },
-        },
-      });
-      allQuantities.forEach((q) => {
-        quantityMap.set(q.productId, q._sum.quantity || 0);
-      });
-    }
-
-    const itemsWithQuantity = items.map((item) => ({
-      ...item,
-      totalQuantity: quantityMap.get(item.id) || 0,
-    }));
+      // eslint-disable-next-line no-unused-vars
+      const { batches, ...rest } = product;
+      return { ...rest, totalQuantity };
+    });
 
     const totalPages = Math.ceil(total / limit) || 1;
 
     logger.info(`Listed products: page ${page}, total ${total}`);
 
     return {
-      items: itemsWithQuantity,
+      items: productsWithQuantity,
       meta: { total, page, limit, totalPages },
     };
   } catch (err) {
+    if (err instanceof ResponseError) throw err;
     logger.error(`Error listing products: ${err.message}`);
-    throw new ResponseError(500, `Failed to list products: ${err.message}`);
+    throw new ResponseError(500, "Failed to get product: Server error");
   }
 }
 
@@ -108,29 +193,35 @@ export async function getProductById(productId) {
         sellingPrice: true,
         isPerishable: true,
         isActive: true,
-        createdAt: true,
-        updatedAt: true,
-        categoryId: true,
         category: {
           select: { id: true, name: true },
         },
         images: {
-          select: { id: true, url: true, thumbnailUrl: true, altText: true },
+          select: { id: true, url: true, thumbnailUrl: true },
         },
-        // Hindari include batches dan movements untuk mencegah overfetching
-        // Gunakan query terpisah jika diperlukan dengan pagination
+        batches: {
+          where: {
+            status: { not: "EXPIRED" },
+          },
+          select: {
+            id: true,
+            quantity: true,
+            status: true,
+            expiredAt: true,
+          },
+        },
       },
     });
 
     if (!product) throw new ResponseError(404, "Product not found");
 
-    const totalQuantity = await prisma.productBatch.aggregate({
-      _sum: { quantity: true },
-      where: { productId, status: { not: "EXPIRED" } },
-    });
+    const totalQuantity = product.batches.reduce(
+      (sum, batch) => sum + batch.quantity,
+      0
+    );
 
     logger.info(`Retrieved product: ${productId}`);
-    return { ...product, totalQuantity: totalQuantity._sum.quantity || 0 };
+    return { ...product, totalQuantity };
   } catch (err) {
     if (err instanceof ResponseError) throw err;
     logger.error(`Error getting product ${productId}: ${err.message}`);
@@ -150,60 +241,31 @@ export async function createProduct(data, userId = null, files = null) {
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      // Check for duplicate barcode inside transaction to prevent race condition
       const existingProduct = await tx.product.findUnique({
         where: { barcode: productData.barcode },
       });
       if (existingProduct) throw new ResponseError(409, "Duplicate barcode");
 
-      const product = await tx.product.create({
-        data: {
+      return await createProductWithBatch(
+        tx,
+        {
           name: productData.name,
           barcode: productData.barcode,
           description: productData.description,
           unit: productData.unit,
-          sellingPrice: safeBigInt(productData.sellingPrice, "Selling price"),
+          sellingPrice: productData.sellingPrice,
           isPerishable: productData.isPerishable,
           categoryId: productData.categoryId,
         },
-      });
-
-      const batchStatus = getBatchStatus(expiredAt, quantity);
-
-      const batch = await tx.productBatch.create({
-        data: {
-          productId: product.id,
+        {
           quantity,
-          costPrice: safeBigInt(costPrice, "Cost price"),
-          status: batchStatus,
+          costPrice,
           receivedAt,
           expiredAt,
         },
-      });
-
-      const movement = await tx.stockMovement.create({
-        data: {
-          productId: product.id,
-          productBatchId: batch.id,
-          quantity,
-          movementType: "IN",
-          note:
-            movementNote ||
-            `Initial stock: ${quantity} units for new product: ${product.name}`,
-        },
-      });
-
-      await tx.auditLog.create({
-        data: {
-          action: "CREATE",
-          entity: "Product",
-          entityId: product.id,
-          newValues: { product, batch, movement },
-          userId,
-        },
-      });
-
-      return { product, batch, movement };
+        movementNote,
+        userId
+      );
     });
 
     let imagesResult = null;
@@ -232,6 +294,21 @@ export async function addImagesToProduct(productId, filesInfo, userId = null) {
   }
 
   try {
+    const productCheck = await prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true, isDeleted: true },
+    });
+
+    if (!productCheck) {
+      await Promise.all(filesInfo.map((file) => deleteImage(file.filename)));
+      throw new ResponseError(404, "Product not found");
+    }
+
+    if (productCheck.isDeleted) {
+      await Promise.all(filesInfo.map((file) => deleteImage(file.filename)));
+      throw new ResponseError(410, "Cannot upload images to deleted product");
+    }
+
     const product = await prisma.product.findUnique({
       where: { id: productId, isDeleted: false },
       include: { images: true },
@@ -242,22 +319,20 @@ export async function addImagesToProduct(productId, filesInfo, userId = null) {
       productId,
     });
 
-    await prisma.auditLog.create({
-      data: {
-        action: "UPDATE",
-        entity: "Product",
-        entityId: productId,
-        oldValues: { imageCount: product.images?.length || 0 },
-        newValues: {
-          imageCount: (product.images?.length || 0) + results.length,
-          newImages: results.map((r) => ({
-            id: r.image.id,
-            url: r.image.url,
-            thumbnailUrl: r.image.thumbnailUrl,
-          })),
-        },
-        userId,
+    await createAuditLog(prisma, {
+      action: "UPDATE",
+      entity: "Product",
+      entityId: productId,
+      oldValues: { imageCount: product.images?.length || 0 },
+      newValues: {
+        imageCount: (product.images?.length || 0) + results.length,
+        newImages: results.map((r) => ({
+          id: r.image.id,
+          url: r.image.url,
+          thumbnailUrl: r.image.thumbnailUrl,
+        })),
       },
+      userId,
     });
 
     logger.info(`Added ${results.length} images to product: ${productId}`);
@@ -265,7 +340,127 @@ export async function addImagesToProduct(productId, filesInfo, userId = null) {
   } catch (err) {
     if (err instanceof ResponseError) throw err;
     logger.error(`Error adding images to product ${productId}: ${err.message}`);
-    throw new ResponseError(500, `Images upload failed: ${err.message}`);
+    throw new ResponseError(500, "Images upload failed: Server error");
+  }
+}
+
+export async function getProductImages(productId) {
+  try {
+    const product = await prisma.product.findUnique({
+      where: { id: productId, isDeleted: false },
+      select: { id: true, name: true },
+    });
+
+    if (!product) {
+      throw new ResponseError(404, "Product not found");
+    }
+
+    const images = await prisma.image.findMany({
+      where: { productId },
+      omit: { productId: true },
+      orderBy: { createdAt: "asc" },
+    });
+
+    logger.info(`Retrieved ${images.length} images for product: ${productId}`);
+    return images;
+  } catch (err) {
+    if (err instanceof ResponseError) throw err;
+    logger.error(
+      `Error getting images for product ${productId}: ${err.message}`
+    );
+    throw new ResponseError(
+      500,
+      `Failed to get product images: ${err.message}`
+    );
+  }
+}
+
+export async function updateProductImages(
+  productId,
+  newFiles,
+  removeImageIds,
+  userId = null
+) {
+  try {
+    const product = await prisma.product.findUnique({
+      where: { id: productId, isDeleted: false },
+      select: { id: true, name: true },
+    });
+
+    if (!product) {
+      throw new ResponseError(404, "Product not found");
+    }
+
+    const results = { added: [], removed: [] };
+
+    if (removeImageIds && removeImageIds.length > 0) {
+      for (const imageId of removeImageIds) {
+        try {
+          const removedImage = await deleteProductImage(
+            productId,
+            imageId,
+            userId
+          );
+          results.removed.push(removedImage);
+        } catch (err) {
+          logger.warn(`Failed to remove image ${imageId}: ${err.message}`);
+        }
+      }
+    }
+
+    if (newFiles && newFiles.length > 0) {
+      const addedImages = await addImagesToProduct(productId, newFiles, userId);
+      results.added = addedImages;
+    }
+
+    logger.info(
+      `Updated images for product ${productId}: added ${results.added.length}, removed ${results.removed.length}`
+    );
+    return results;
+  } catch (err) {
+    if (err instanceof ResponseError) throw err;
+    logger.error(
+      `Error updating images for product ${productId}: ${err.message}`
+    );
+    throw new ResponseError(
+      500,
+      "Failed to update product images: Server error"
+    );
+  }
+}
+
+export async function deleteProductImage(productId, imageId, userId = null) {
+  try {
+    const product = await prisma.product.findUnique({
+      where: { id: productId, isDeleted: false },
+      select: { id: true, name: true },
+    });
+
+    if (!product) {
+      throw new ResponseError(404, "Product not found");
+    }
+
+    const image = await prisma.image.findUnique({
+      where: { id: imageId },
+    });
+
+    if (!image || image.productId !== productId) {
+      throw new ResponseError(404, "Image not found for this product");
+    }
+
+    const result = await deleteImage(imageId, userId);
+
+    logger.info(`Deleted image ${imageId} from product: ${productId}`);
+    return result.image;
+  } catch (err) {
+    if (err instanceof ResponseError) throw err;
+    logger.error(
+      `Error deleting image ${imageId} from product ${productId}: ${err.message}`
+    );
+    throw new ResponseError(
+      500,
+      "Failed to delete product image: Server error"
+    );
   }
 }
 
@@ -280,13 +475,14 @@ export async function bulkCreateProducts(
 
   try {
     const results = await prisma.$transaction(async (tx) => {
-      // Check for duplicate barcodes inside transaction to prevent race condition
       const barcodes = productsData.map((p) => p.barcode).filter(Boolean);
+
       if (barcodes.length > 0) {
         const existingProducts = await tx.product.findMany({
           where: { barcode: { in: barcodes } },
           select: { barcode: true },
         });
+
         if (existingProducts.length > 0) {
           const duplicateBarcodes = existingProducts.map((p) => p.barcode);
           throw new ResponseError(
@@ -297,6 +493,10 @@ export async function bulkCreateProducts(
       }
 
       const createdProducts = [];
+
+      const distributedFiles = files
+        ? distributeFilesEvenly(files, productsData.length)
+        : [];
 
       for (let i = 0; i < productsData.length; i++) {
         const data = productsData[i];
@@ -309,84 +509,29 @@ export async function bulkCreateProducts(
           ...productData
         } = data;
 
-        const product = await tx.product.create({
-          data: {
+        const result = await createSingleProduct(
+          tx,
+          {
             name: productData.name,
             barcode: productData.barcode,
             description: productData.description,
             unit: productData.unit,
-            sellingPrice: safeBigInt(productData.sellingPrice, "Selling price"),
+            sellingPrice: productData.sellingPrice,
             isPerishable: productData.isPerishable,
             categoryId: productData.categoryId,
           },
-        });
-
-        const batchStatus = getBatchStatus(expiredAt, quantity);
-
-        const batch = await tx.productBatch.create({
-          data: {
-            productId: product.id,
+          {
             quantity,
-            costPrice: safeBigInt(costPrice, "Cost price"),
-            status: batchStatus,
+            costPrice,
             receivedAt,
             expiredAt,
           },
-        });
+          movementNote,
+          distributedFiles[i],
+          userId
+        );
 
-        const movement = await tx.stockMovement.create({
-          data: {
-            productId: product.id,
-            productBatchId: batch.id,
-            quantity,
-            movementType: "IN",
-            note:
-              movementNote ||
-              `Initial stock: ${quantity} units for new product: ${product.name}`,
-          },
-        });
-
-        // Handle images for this product
-        let imagesResult = null;
-        if (files && files.length > 0) {
-          // Calculate images for this product on-demand
-          const imagesPerProduct = Math.floor(
-            files.length / productsData.length
-          );
-          const remainder = files.length % productsData.length;
-          const extraImage = i < remainder ? 1 : 0;
-          const startIndex = i * imagesPerProduct + Math.min(i, remainder);
-          const endIndex = startIndex + imagesPerProduct + extraImage;
-          const productFiles = files.slice(startIndex, endIndex);
-
-          if (productFiles.length > 0) {
-            imagesResult = await processAndCreateImages(
-              productFiles,
-              userId,
-              {
-                productId: product.id,
-              },
-              tx
-            ); // Pass transaction
-          }
-        }
-
-        await tx.auditLog.create({
-          data: {
-            action: "CREATE",
-            entity: "Product",
-            entityId: product.id,
-            newValues: { product, batch, movement, images: imagesResult },
-            userId,
-          },
-        });
-
-        createdProducts.push({
-          product,
-          batch,
-          movement,
-          images: imagesResult,
-        });
+        createdProducts.push(result);
       }
 
       return createdProducts;
@@ -400,49 +545,28 @@ export async function bulkCreateProducts(
     return results;
   } catch (err) {
     if (err instanceof ResponseError) throw err;
-    if (err.code === "P2002")
-      throw new ResponseError(409, "Duplicate value (likely barcode)");
     logger.error(`Error bulk creating products: ${err.message}`);
     throw new ResponseError(500, `Failed to create products: ${err.message}`);
   }
 }
 
-export async function updateProduct(id, payload, userId = null) {
+export async function updateProduct(id, data, userId = null) {
   try {
     const existing = await prisma.product.findUnique({
       where: { id, isDeleted: false },
     });
     if (!existing) throw new ResponseError(404, "Product not found");
 
-    const data = {};
-    const allowedFields = [
-      "name",
-      "description",
-      "unit",
-      "isPerishable",
-      "isActive",
-      "categoryId",
-      "sellingPrice",
-    ];
-    allowedFields.forEach((field) => {
-      if (payload[field] !== undefined) {
-        data[field] =
-          field === "sellingPrice" ? BigInt(payload[field]) : payload[field];
-      }
-    });
-
     const result = await prisma.$transaction(async (tx) => {
       const updated = await tx.product.update({ where: { id }, data });
 
-      await tx.auditLog.create({
-        data: {
-          action: "UPDATE",
-          entity: "Product",
-          entityId: id,
-          oldValues: existing,
-          newValues: updated,
-          userId,
-        },
+      await createAuditLog(tx, {
+        action: "UPDATE",
+        entity: "Product",
+        entityId: id,
+        oldValues: existing,
+        newValues: updated,
+        userId,
       });
 
       return updated;
@@ -471,15 +595,13 @@ export async function deleteProduct(id, userId = null) {
         data: { isDeleted: true, deletedAt: new Date() },
       });
 
-      await tx.auditLog.create({
-        data: {
-          action: "DELETE",
-          entity: "Product",
-          entityId: id,
-          oldValues: existing,
-          newValues: deleted,
-          userId,
-        },
+      await createAuditLog(tx, {
+        action: "DELETE",
+        entity: "Product",
+        entityId: id,
+        oldValues: existing,
+        newValues: deleted,
+        userId,
       });
 
       return deleted;
@@ -514,6 +636,9 @@ export async function listProductBatchesByProduct(
         skip,
         take: limit,
         orderBy,
+        omit: {
+          productId: true,
+        },
       }),
     ]);
 
@@ -545,7 +670,6 @@ export async function updateProductBatch(
   userId = null
 ) {
   try {
-    // Validasi batch milik product
     const batch = await prisma.productBatch.findFirst({
       where: { id: batchId, productId },
     });
@@ -557,8 +681,7 @@ export async function updateProductBatch(
       const updateData = {};
       if (data.status !== undefined) updateData.status = data.status;
       if (data.quantity !== undefined) updateData.quantity = data.quantity;
-      if (data.costPrice !== undefined)
-        updateData.costPrice = safeBigInt(data.costPrice, "Cost price");
+      if (data.costPrice !== undefined) updateData.costPrice = data.costPrice;
       if (data.receivedAt !== undefined)
         updateData.receivedAt = data.receivedAt;
       if (data.expiredAt !== undefined) updateData.expiredAt = data.expiredAt;
@@ -566,12 +689,12 @@ export async function updateProductBatch(
       const result = await tx.productBatch.update({
         where: { id: batchId },
         data: updateData,
+        omit: { productId: true },
       });
 
-      // Jika quantity berubah, buat stock movement dengan type ADJUSTMENT
       if (data.quantity !== undefined && data.quantity !== batch.quantity) {
         const quantityDiff = data.quantity - batch.quantity;
-        const movementType = "ADJUSTMENT"; // Selalu ADJUSTMENT untuk tracking
+        const movementType = "ADJUSTMENT";
 
         await tx.stockMovement.create({
           data: {
@@ -586,15 +709,13 @@ export async function updateProductBatch(
         });
       }
 
-      await tx.auditLog.create({
-        data: {
-          action: "UPDATE",
-          entity: "ProductBatch",
-          entityId: batchId,
-          oldValues,
-          newValues: result,
-          userId,
-        },
+      await createAuditLog(tx, {
+        action: "UPDATE",
+        entity: "ProductBatch",
+        entityId: batchId,
+        oldValues,
+        newValues: result,
+        userId,
       });
 
       return result;
@@ -616,7 +737,6 @@ export async function updateProductBatch(
 
 export async function addProductStock(productId, data, userId = null) {
   try {
-    // Validasi product ada
     const product = await prisma.product.findUnique({
       where: { id: productId, isDeleted: false },
     });
@@ -625,19 +745,17 @@ export async function addProductStock(productId, data, userId = null) {
     const batchStatus = getBatchStatus(data.expiredAt, data.quantity);
 
     const result = await prisma.$transaction(async (tx) => {
-      // Create batch baru
       const batch = await tx.productBatch.create({
         data: {
           productId,
           quantity: data.quantity,
-          costPrice: safeBigInt(data.costPrice, "Cost price"),
+          costPrice: data.costPrice,
           status: batchStatus,
           receivedAt: data.receivedAt,
           expiredAt: data.expiredAt,
         },
       });
 
-      // Create stock movement
       const movement = await tx.stockMovement.create({
         data: {
           productId,
@@ -645,19 +763,15 @@ export async function addProductStock(productId, data, userId = null) {
           quantity: data.quantity,
           movementType: "IN",
           note: data.note || `Stock added: ${data.quantity} units`,
-          userId,
         },
       });
 
-      // Audit log
-      await tx.auditLog.create({
-        data: {
-          action: "CREATE",
-          entity: "ProductBatch",
-          entityId: batch.id,
-          newValues: { batch, movement },
-          userId,
-        },
+      await createAuditLog(tx, {
+        action: "CREATE",
+        entity: "ProductBatch",
+        entityId: batch.id,
+        newValues: { batch, movement },
+        userId,
       });
 
       return { batch, movement };
@@ -672,7 +786,7 @@ export async function addProductStock(productId, data, userId = null) {
     if (err.code === "P2002")
       throw new ResponseError(409, "Duplicate batch data");
     logger.error(`Error adding stock to product ${productId}: ${err.message}`);
-    throw new ResponseError(500, `Failed to add product stock: ${err.message}`);
+    throw new ResponseError(500, "Failed to add product stock: Server error");
   }
 }
 
@@ -681,6 +795,9 @@ export default {
   getProductById,
   createProduct,
   addImagesToProduct,
+  getProductImages,
+  updateProductImages,
+  deleteProductImage,
   updateProduct,
   deleteProduct,
   listProductBatchesByProduct,

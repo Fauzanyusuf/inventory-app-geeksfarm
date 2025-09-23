@@ -3,6 +3,7 @@ import path from "path";
 import crypto from "crypto";
 import { ResponseError } from "../utils/response-error.js";
 import { uploadsDir, uploadsUrlPrefix } from "../config/uploads.js";
+import { logger } from "../application/logging.js";
 
 export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 export const IMAGE_MIME_TYPES = new Set([
@@ -52,7 +53,7 @@ export async function deleteFile(filename) {
     await fs.unlink(filePath);
     return true;
   } catch (error) {
-    console.warn(`Failed to delete file ${filename}:`, error.message);
+    logger.warn(`Failed to delete file ${filename}:`, error.message);
     return false;
   }
 }

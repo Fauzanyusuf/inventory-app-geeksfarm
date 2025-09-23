@@ -4,6 +4,7 @@ import { prisma } from "../application/database.js";
 import { uploadsDir } from "../config/uploads.js";
 import { logger } from "../application/logging.js";
 import { generateImageUrl, deleteFile } from "../utils/image-utils.js";
+import { createAuditLog } from "../utils/audit-utils.js";
 
 export async function processAndCreateImage(
   fileInfo,
@@ -136,30 +137,26 @@ export async function replaceOneToOneImage(
       updatedOwner = ownerExisting;
     }
 
-    await tx.auditLog.create({
-      data: {
-        action: "UPDATE",
-        entity: ownerType === "user" ? "User" : "Category",
-        entityId: ownerId,
-        oldValues: ownerExisting,
-        newValues: updatedOwner,
-        userId: actorUserId || null,
-      },
+    await createAuditLog(tx, {
+      action: "UPDATE",
+      entity: ownerType === "user" ? "User" : "Category",
+      entityId: ownerId,
+      oldValues: ownerExisting,
+      newValues: updatedOwner,
+      userId: actorUserId || null,
     });
 
-    await tx.auditLog.create({
-      data: {
-        action: "UPDATE",
-        entity: "ImageReplacement",
-        entityId: image.id,
-        newValues: {
-          newImageId: image.id,
-          prevImageId: prevImage?.id || null,
-          ownerType,
-          ownerId,
-        },
-        userId: actorUserId || null,
+    await createAuditLog(tx, {
+      action: "UPDATE",
+      entity: "ImageReplacement",
+      entityId: image.id,
+      newValues: {
+        newImageId: image.id,
+        prevImageId: prevImage?.id || null,
+        ownerType,
+        ownerId,
       },
+      userId: actorUserId || null,
     });
 
     let deletedPrev = null;
@@ -206,7 +203,16 @@ export async function replaceOneToOneImage(
   }
 
   return {
-    image: txResult.image,
+    image: {
+      id: txResult.image.id,
+      url: txResult.image.url,
+      thumbnailUrl: txResult.image.thumbnailUrl,
+      altText: txResult.image.altText,
+      createdAt: txResult.image.createdAt,
+      ...(ownerType === "user" && { userId: ownerId }),
+      ...(ownerType === "category" && { categoryId: ownerId }),
+      ...(ownerType === "product" && { productId: ownerId }),
+    },
     prevImage: txResult.prevImage,
     owner: txResult.updatedOwner,
     fileCleanup,
@@ -217,28 +223,24 @@ export async function createImageRecord(tx, imageData, actorUserId = null) {
   if (tx && tx.image && tx.auditLog) {
     // Jika tx diberikan, gunakan dalam tx yang ada
     const image = await tx.image.create({ data: imageData });
-    await tx.auditLog.create({
-      data: {
-        action: "CREATE",
-        entity: "Image",
-        entityId: image.id,
-        newValues: image,
-        userId: actorUserId || null,
-      },
+    await createAuditLog(tx, {
+      action: "CREATE",
+      entity: "Image",
+      entityId: image.id,
+      newValues: image,
+      userId: actorUserId || null,
     });
     return image;
   } else {
     // Jika tidak ada tx, buat transaction baru
     return await prisma.$transaction(async (prismaTx) => {
       const image = await prismaTx.image.create({ data: imageData });
-      await prismaTx.auditLog.create({
-        data: {
-          action: "CREATE",
-          entity: "Image",
-          entityId: image.id,
-          newValues: image,
-          userId: actorUserId || null,
-        },
+      await createAuditLog(prismaTx, {
+        action: "CREATE",
+        entity: "Image",
+        entityId: image.id,
+        newValues: image,
+        userId: actorUserId || null,
       });
       return image;
     });
@@ -359,14 +361,12 @@ export async function deleteImage(id, userId = null) {
 
     // Audit log
     if (userId) {
-      await prisma.auditLog.create({
-        data: {
-          action: "DELETE",
-          entity: "Image",
-          entityId: id,
-          oldValues: image,
-          userId,
-        },
+      await createAuditLog(prisma, {
+        action: "DELETE",
+        entity: "Image",
+        entityId: id,
+        oldValues: image,
+        userId,
       });
     }
 

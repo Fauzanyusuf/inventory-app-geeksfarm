@@ -4,7 +4,7 @@ import { logger } from "../application/logging.js";
 export default function rbacMiddleware(requiredPermissions = []) {
   return (req, res, next) => {
     try {
-      const { permissions: userPermissions = [], id: userId } = req.user || {};
+      const { permissions: userPermissions = [], sub: userId } = req.user || {};
 
       if (!userId) {
         throw new ResponseError(401, "Unauthorized: Missing user data");

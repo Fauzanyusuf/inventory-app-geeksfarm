@@ -1,0 +1,2096 @@
+openapi: "3.0.3"
+info:
+  title: E-Commerce Retail Inventory Management System API
+  description: API for managing inventory, products, users, categories, and stock movements with role-based access control
+  version: "1.0.0"
+servers:
+  - url: http://localhost:3000/api
+    description: Development server
+
+# ========================================================================================
+# API ORGANIZATION GUIDELINES
+# ========================================================================================
+#
+# This OpenAPI specification follows a structured organization for better maintainability:
+#
+# 1. ENDPOINT ORDERING PRINCIPLES:
+#    - Authentication endpoints come FIRST (foundational for API access)
+#    - Resource endpoints follow ALPHABETICAL order for easy discovery
+#    - Current alphabetical order: access-permissions, audit-logs, categories, products, roles, stock-movements, users
+#
+# 2. CRUD OPERATION ORDER (for each resource):
+#    - GET /{resource}          - List/Collection endpoint
+#    - POST /{resource}         - Create new resource (if applicable)
+#    - GET /{resource}/{id}     - Get single resource by ID
+#    - PUT/PATCH /{resource}/{id} - Update resource (if applicable)
+#    - DELETE /{resource}/{id}  - Delete resource (if applicable)
+#
+# 3. NESTED/SUB-RESOURCE ENDPOINTS:
+#    - Always placed AFTER the main CRUD operations for the parent resource
+#    - Examples: /{resource}/{id}/images, /{resource}/{id}/batches
+#
+# 4. MAINTENANCE TIPS:
+#    - When adding new resources: Insert in alphabetical position
+#    - When adding new endpoints: Follow CRUD order within resource section
+#    - Use consistent parameter naming and response schemas
+#    - Keep related endpoints grouped together with clear section comments
+#    - Update this header comment when organization changes
+#
+# ========================================================================================
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # Common schemas
+    Error:
+      type: object
+      properties:
+        errors:
+          type: string
+          description: Error message
+
+    PaginationMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+          minimum: 1
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total:
+          type: integer
+        totalPages:
+          type: integer
+
+    # Auth schemas
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 100
+          description: User email address
+        password:
+          type: string
+          minLength: 6
+          maxLength: 100
+          description: User password
+
+    RegisterRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          description: User full name
+        email:
+          type: string
+          format: email
+          maxLength: 100
+          description: User email address
+        password:
+          type: string
+          minLength: 6
+          maxLength: 100
+          description: User password
+        phone:
+          type: string
+          pattern: '^(\\+62|62|0)[8-9][0-9]{7,11}$'
+          maxLength: 20
+          description: Indonesian phone number format
+        sex:
+          type: string
+          enum: [Male, Female]
+          description: User gender
+
+    AuthResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            accessToken:
+              type: string
+              description: JWT access token
+            user:
+              $ref: "#/components/schemas/User"
+
+    RefreshResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            accessToken:
+              type: string
+              description: New JWT access token
+
+    # User schemas
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        sex:
+          type: string
+          enum: [MALE, FEMALE]
+        roleId:
+          type: string
+          format: uuid
+        isVerified:
+          type: boolean
+        isDeleted:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        email:
+          type: string
+          format: email
+          maxLength: 100
+        phone:
+          type: string
+          pattern: '^(\\+62|62|0)[8-9][0-9]{7,11}$'
+          maxLength: 20
+        sex:
+          type: string
+          enum: [MALE, FEMALE]
+
+    ApproveUserRequest:
+      type: object
+      required:
+        - roleId
+      properties:
+        roleId:
+          type: string
+          minLength: 1
+          description: Role ID to assign to user
+
+    UsersListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    # Product schemas
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        barcode:
+          type: string
+        description:
+          type: string
+        unit:
+          type: string
+        sellingPrice:
+          type: decimal
+          description:
+        isPerishable:
+          type: boolean
+        isActive:
+          type: boolean
+        categoryId:
+          type: string
+          description: Category ID (CUID format)
+        category:
+          $ref: "#/components/schemas/Category"
+        images:
+          type: array
+          items:
+            $ref: "#/components/schemas/Image"
+        totalStock:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateProductRequest:
+      type: object
+      required:
+        - name
+        - sellingPrice
+        - costPrice
+        - quantity
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Product name
+        barcode:
+          type: string
+          description: Product barcode
+        description:
+          type: string
+          description: Product description
+        unit:
+          type: string
+          default: pcs
+          description: Unit of measurement
+        sellingPrice:
+          oneOf:
+            - type: string
+              description: Price as string (will be converted to BigInt)
+            - type: integer
+              description: Price as integer
+          description: Selling price must be positive
+        costPrice:
+          oneOf:
+            - type: string
+              description: Cost as string (will be converted to BigInt)
+            - type: integer
+              description: Cost as integer
+          description: Cost price must be positive
+        categoryId:
+          type: string
+          description: Category ID (CUID format)
+        quantity:
+          type: integer
+          minimum: 1
+          description: Initial stock quantity
+        receivedAt:
+          type: string
+          format: date-time
+          description: When stock was received
+        expiredAt:
+          type: string
+          format: date-time
+          description: Expiration date (required if perishable)
+        movementNote:
+          type: string
+          description: Note for stock movement
+        isPerishable:
+          type: boolean
+          default: false
+          description: Whether product can expire
+
+    UpdateProductRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        unit:
+          type: string
+        sellingPrice:
+          oneOf:
+            - type: string
+            - type: integer
+          description: Selling price as BigInt
+        isPerishable:
+          type: boolean
+        isActive:
+          type: boolean
+        categoryId:
+          type: string
+          description: Category ID (CUID format)
+
+    ProductBatch:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+        costPrice:
+          type: string
+        status:
+          type: string
+          enum: [AVAILABLE, EXPIRED, SOLD_OUT]
+        receivedAt:
+          type: string
+          format: date-time
+        expiredAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    UpdateProductBatchRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [AVAILABLE, EXPIRED, SOLD_OUT]
+        quantity:
+          type: integer
+          minimum: 0
+        costPrice:
+          oneOf:
+            - type: string
+            - type: integer
+        receivedAt:
+          type: string
+          format: date-time
+        expiredAt:
+          type: string
+          format: date-time
+        notes:
+          type: string
+
+    AddProductStockRequest:
+      type: object
+      required:
+        - quantity
+      properties:
+        quantity:
+          type: integer
+          minimum: 1
+          description: Quantity to add to stock
+
+    ProductsListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    # Category schemas
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        image:
+          $ref: "#/components/schemas/Image"
+        isDeleted:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateCategoryRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Category name
+        description:
+          type: string
+          description: Category description
+
+    UpdateCategoryRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+
+    CategoriesListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Category"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    # Stock Movement schemas
+    CommitSalesRequest:
+      type: object
+      required:
+        - sales
+      properties:
+        sales:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required:
+              - productId
+              - quantity
+            properties:
+              productId:
+                type: string
+                format: uuid
+                description: Product ID to sell
+              quantity:
+                type: integer
+                minimum: 1
+                description: Quantity to sell
+        note:
+          type: string
+          description: Optional note for the sales transaction
+
+    StockMovement:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+        productBatchId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+        movementType:
+          type: string
+          enum: [IN, OUT, ADJUSTMENT]
+        note:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    # Image schema
+    Image:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        url:
+          type: string
+          format: uri
+        thumbnailUrl:
+          type: string
+          format: uri
+        altText:
+          type: string
+        productId:
+          type: string
+          format: uuid
+        categoryId:
+          type: string
+          description: Category ID (CUID format)
+        userId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+
+    # Audit log schema
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        action:
+          type: string
+          description: Action performed (CREATE, UPDATE, DELETE, LOGIN, etc.)
+        entityType:
+          type: string
+          description: Type of entity affected (User, Product, Category, etc.)
+        entityId:
+          type: string
+          format: uuid
+          description: ID of the affected entity
+        oldValues:
+          type: object
+          description: Previous values before change
+        newValues:
+          type: object
+          description: New values after change
+        ipAddress:
+          type: string
+          description: IP address of the user
+        userAgent:
+          type: string
+          description: User agent string
+        createdAt:
+          type: string
+          format: date-time
+
+    # Role schema
+    Role:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    # Access permission schema
+    AccessPermission:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        accessKey:
+          type: string
+          description: Permission key (e.g., user:read, product:manage)
+        name:
+          type: string
+          description: Human-readable permission name
+        description:
+          type: string
+          description: Permission description
+        module:
+          type: string
+          description: Module this permission belongs to
+        createdAt:
+          type: string
+          format: date-time
+
+    # Query parameters
+    PaginationQuery:
+      type: object
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          default: 1
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 10
+        search:
+          type: string
+          description: Search query string
+
+paths:
+  # ========================================================================================
+  # AUTHENTICATION ENDPOINTS
+  # ========================================================================================
+  # Authentication endpoints come first as they are foundational for API access
+
+  /auth/register:
+    post:
+      summary: Register a new user
+      description: Register a new user account with optional profile image upload
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 100
+                email:
+                  type: string
+                  format: email
+                  maxLength: 100
+                password:
+                  type: string
+                  minLength: 6
+                  maxLength: 100
+                phone:
+                  type: string
+                  pattern: '^(\\+62|62|0)[8-9][0-9]{7,11}$'
+                  maxLength: 20
+                sex:
+                  type: string
+                  enum: [MALE, FEMALE]
+                image:
+                  type: string
+                  format: binary
+                  description: Profile image file
+      responses:
+        "201":
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /auth/login:
+    post:
+      summary: User login
+      description: Authenticate user and return access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /auth/refresh:
+    post:
+      summary: Refresh access token
+      description: Generate new access token using refresh token
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RefreshResponse"
+        "401":
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /auth/logout:
+    post:
+      summary: User logout
+      description: Invalidate current session
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "401":
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # ========================================================================================
+  # RESOURCE ENDPOINTS (Alphabetical Order)
+  # ========================================================================================
+  # Main resource endpoints are ordered alphabetically for better discoverability
+  # CRUD operations follow consistent order: GET collection, POST create, GET by ID, PUT/PATCH update, DELETE
+
+  # ACCESS PERMISSIONS RESOURCE
+  /access-permissions:
+    get:
+      summary: List access permissions
+      description: Get list of all access permissions (requires user:read permission)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Access permissions retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AccessPermission"
+                  message:
+                    type: string
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /access-permissions/{id}:
+    get:
+      summary: Get access permission by ID
+      description: Get a specific access permission by ID (requires user:read permission)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: cuid
+          description: Access Permission ID
+      responses:
+        "200":
+          description: Access permission retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/AccessPermission"
+                  message:
+                    type: string
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Access permission not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # AUDIT LOGS RESOURCE
+  /audit-logs:
+    get:
+      summary: List audit logs
+      description: Get paginated list of audit logs (requires user:manage permission)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: userId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by user ID
+        - name: action
+          in: query
+          schema:
+            type: string
+          description: Filter by action type
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Filter from start date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Filter to end date
+      responses:
+        "200":
+          description: Audit logs retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AuditLog"
+                  meta:
+                    $ref: "#/components/schemas/PaginationMeta"
+                  message:
+                    type: string
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # CATEGORIES RESOURCE
+  /categories:
+    get:
+      summary: List categories
+      description: Get paginated list of categories (requires product:read permission)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Categories retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoriesListResponse"
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      summary: Create category
+      description: Create a new category with optional image (requires product:manage permission)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  description: Category name
+                description:
+                  type: string
+                  description: Category description
+                image:
+                  type: string
+                  format: binary
+                  description: Category image file
+      responses:
+        "201":
+          description: Category created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Category"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /categories/{id}:
+    get:
+      summary: Get category by ID
+      description: Get detailed category information (requires product:read permission)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: cuid
+      responses:
+        "200":
+          description: Category retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Category"
+        "404":
+          description: Category not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      summary: Update category
+      description: Update an existing category with optional image (requires product:manage permission)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: cuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  description: Category name
+                description:
+                  type: string
+                  description: Category description
+                isDeleted:
+                  type: boolean
+                  default: false
+                  description: Category is deleted
+                image:
+                  type: string
+                  format: binary
+                  description: Category image file
+      responses:
+        "200":
+          description: Category updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Category"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete category
+      description: Soft delete a category (requires product:manage permission)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: cuid
+      responses:
+        "204":
+          description: Category deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # Categories nested/sub-resource endpoints
+  /categories/{id}/image:
+    put:
+      summary: Upload category image
+      description: Upload image for a category (requires product:manage permission)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: cuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: Category image file
+      responses:
+        "200":
+          description: Image uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Image"
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    get:
+      summary: Get category image
+      description: Get image for a category (requires product:read permission)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: cuid
+      responses:
+        "200":
+          description: Image retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Image"
+                  message:
+                    type: string
+        "404":
+          description: Category or image not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete category image
+      description: Delete image for a category (requires product:manage permission)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: cuid
+      responses:
+        "200":
+          description: Image deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Image"
+                  message:
+                    type: string
+        "404":
+          description: Category or image not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # PRODUCTS RESOURCE
+  /products:
+    get:
+      summary: List products
+      description: Get paginated list of products (requires product:read permission)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Products retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductsListResponse"
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      summary: Create product
+      description: Create a new product with optional images (requires product:manage permission)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Product name
+                barcode:
+                  type: string
+                  description: Product barcode
+                description:
+                  type: string
+                  description: Product description
+                unit:
+                  type: string
+                  default: pcs
+                  description: Unit of measurement
+                sellingPrice:
+                  type: string
+                  description: Selling price as string
+                costPrice:
+                  type: string
+                  description: Cost price as string
+                categoryId:
+                  type: string
+                  description: Category ID (CUID format)
+                quantity:
+                  type: integer
+                  minimum: 1
+                  description: Initial stock quantity
+                receivedAt:
+                  type: string
+                  format: date-time
+                  description: When stock was received
+                expiredAt:
+                  type: string
+                  format: date-time
+                  description: Expiration date
+                movementNote:
+                  type: string
+                  description: Note for stock movement
+                isPerishable:
+                  type: boolean
+                  default: false
+                  description: Whether product can expire
+                images:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  maxItems: 5
+                  description: Product images (max 5 files)
+      responses:
+        "201":
+          description: Product created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Product"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /products/{id}:
+    get:
+      summary: Get product by ID
+      description: Get detailed product information (requires product:read permission)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Product retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Product"
+        "404":
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      summary: Update product
+      description: Update product information (requires product:manage permission)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProductRequest"
+      responses:
+        "200":
+          description: Product updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Product"
+        "400":
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # Products nested/sub-resource endpoints
+  /products/{id}/images:
+    post:
+      summary: Upload product images
+      description: Upload additional images for a product (requires product:manage permission)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                images:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  maxItems: 5
+                  description: Product images (max 5 files)
+      responses:
+        "200":
+          description: Images uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Image"
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    get:
+      summary: Get product images
+      description: Get all images for a product (requires product:read permission)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Images retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Image"
+                  message:
+                    type: string
+        "404":
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      summary: Update product images partially
+      description: Update product images by adding new ones and removing specific existing ones (requires product:manage permission)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                images:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  maxItems: 5
+                  description: New images to add
+                removeImageIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  description: IDs of existing images to remove
+      responses:
+        "200":
+          description: Images updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      added:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Image"
+                      removed:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Image"
+                  message:
+                    type: string
+        "404":
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /products/{productId}/images/{imgId}:
+    delete:
+      summary: Delete product image
+      description: Delete a specific image for a product (requires product:manage permission)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: imgId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Image deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Image"
+                  message:
+                    type: string
+        "404":
+          description: Product or image not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /products/{id}/batches:
+    get:
+      summary: Get product batches
+      description: Get all batches for a specific product (requires inventory:read permission)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Product batches retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ProductBatch"
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /products/{productId}/batches/{batchId}:
+    patch:
+      summary: Update product batch
+      description: Update a specific product batch (requires inventory:manage permission)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: batchId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProductBatchRequest"
+      responses:
+        "200":
+          description: Batch updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/ProductBatch"
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /products/{id}/stock:
+    post:
+      summary: Add product stock
+      description: Add stock to an existing product (requires inventory:manage permission)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddProductStockRequest"
+      responses:
+        "200":
+          description: Stock added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/ProductBatch"
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # ROLES RESOURCE
+  /roles:
+    get:
+      summary: List roles
+      description: Get list of all roles (requires user:read permission)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Roles retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Role"
+                  message:
+                    type: string
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /roles/{id}:
+    get:
+      summary: Get role by ID
+      description: Get a specific role by ID (requires user:read permission)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Role ID
+      responses:
+        "200":
+          description: Role retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Role"
+                  message:
+                    type: string
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Role not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # STOCK MOVEMENTS RESOURCE
+  /stock-movements:
+    get:
+      summary: List stock movements
+      description: Get paginated list of stock movements with optional filtering (requires inventory:read permission)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: productId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by product ID
+        - name: movementType
+          in: query
+          schema:
+            type: string
+            enum: [IN, OUT, ADJUSTMENT]
+          description: Filter by movement type
+      responses:
+        "200":
+          description: Stock movements retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/StockMovement"
+                  meta:
+                    $ref: "#/components/schemas/PaginationMeta"
+                  message:
+                    type: string
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      summary: Commit sales transaction
+      description: Process multiple product sales in a single transaction (requires inventory:manage permission)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommitSalesRequest"
+      responses:
+        "201":
+          description: Sales committed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/StockMovement"
+                  message:
+                    type: string
+        "400":
+          description: Validation error or insufficient stock
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # USERS RESOURCE
+  /users:
+    get:
+      summary: List users
+      description: Get paginated list of users (requires user:read permission)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Users retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsersListResponse"
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /users/me:
+    get:
+      summary: Get current user profile
+      description: Get current authenticated user's profile
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: User profile retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/User"
+    patch:
+      summary: Update current user profile
+      description: Update current authenticated user's profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+      responses:
+        "200":
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/User"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /users/{id}:
+    get:
+      summary: Get user by ID
+      description: Get user details by ID (requires user:read permission)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: User retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/User"
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # Users nested/sub-resource endpoints
+  /users/me/image:
+    put:
+      summary: Upload current user profile image
+      description: Upload profile image for the current authenticated user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: Profile image file
+      responses:
+        "200":
+          description: Image uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Image"
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    get:
+      summary: Get current user profile image
+      description: Get profile image for the current authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Image retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Image"
+                  message:
+                    type: string
+        "404":
+          description: User or image not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete current user profile image
+      description: Delete profile image for the current authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Image deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Image"
+                  message:
+                    type: string
+        "404":
+          description: User or image not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /users/{id}/approve:
+    patch:
+      summary: Approve user account
+      description: Approve a user account and assign role (requires user:manage permission)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApproveUserRequest"
+      responses:
+        "200":
+          description: User approved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/User"
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"

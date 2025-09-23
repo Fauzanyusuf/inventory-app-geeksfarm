@@ -1,11 +1,23 @@
 import { prisma } from "../application/database.js";
 import { ResponseError } from "../utils/response-error.js";
-import { replaceOneToOneImage } from "./image-service.js";
+import { replaceOneToOneImage, deleteImage } from "./image-service.js";
+import { createAuditLog } from "../utils/audit-utils.js";
 
 export async function addImageToUser(userId, fileInfo, actorUserId = null) {
   try {
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new ResponseError(404, "User not found");
+    if (!user) {
+      // Cleanup uploaded file if user not found
+      await deleteImage(fileInfo.filename);
+      throw new ResponseError(404, "User not found");
+    }
+
+    // Check if user is deleted
+    if (user.isDeleted) {
+      // Cleanup uploaded file if user is deleted
+      await deleteImage(fileInfo.filename);
+      throw new ResponseError(410, "Cannot upload image to deleted user");
+    }
 
     const { image, prevImage, owner } = await replaceOneToOneImage(
       "user",
@@ -14,23 +26,21 @@ export async function addImageToUser(userId, fileInfo, actorUserId = null) {
       actorUserId
     );
 
-    await prisma.auditLog.create({
-      data: {
-        action: "UPDATE",
-        entity: "User",
-        entityId: userId,
-        oldValues: {
-          imageId: prevImage?.id || null,
-          imageUrl: prevImage?.url || null,
-          thumbnailUrl: prevImage?.thumbnailUrl || null,
-        },
-        newValues: {
-          imageId: image.id,
-          imageUrl: image.url,
-          thumbnailUrl: image.thumbnailUrl,
-        },
-        userId: actorUserId || userId,
+    await createAuditLog(prisma, {
+      action: "UPDATE",
+      entity: "User",
+      entityId: userId,
+      oldValues: {
+        imageId: prevImage?.id || null,
+        imageUrl: prevImage?.url || null,
+        thumbnailUrl: prevImage?.thumbnailUrl || null,
       },
+      newValues: {
+        imageId: image.id,
+        imageUrl: image.url,
+        thumbnailUrl: image.thumbnailUrl,
+      },
+      userId: actorUserId || userId,
     });
 
     return { image, user: owner, prevImage };
@@ -45,6 +55,7 @@ export async function getUserById(userId) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
+        id: true,
         name: true,
         email: true,
         phone: true,
@@ -66,7 +77,7 @@ export async function getUserById(userId) {
     return user;
   } catch (err) {
     if (err instanceof ResponseError) throw err;
-    throw new ResponseError(500, `Failed to get user: ${err.message}`);
+    throw new ResponseError(500, `Failed to get user: Server error`);
   }
 }
 
@@ -97,15 +108,13 @@ export async function updateUserById(userId, updateData, actorUserId = null) {
         },
       });
 
-      await tx.auditLog.create({
-        data: {
-          action: "UPDATE",
-          entity: "User",
-          entityId: userId,
-          oldValues,
-          newValues: updateData,
-          userId: actorUserId || userId,
-        },
+      await createAuditLog(tx, {
+        action: "UPDATE",
+        entity: "User",
+        entityId: userId,
+        oldValues,
+        newValues: updateData,
+        userId: actorUserId || userId,
       });
 
       return updated;
@@ -145,23 +154,21 @@ export async function approveUserByAdmin(userId, roleId, approverId) {
         throw new ResponseError(404, "Role not found");
       }
 
-      await tx.auditLog.create({
-        data: {
-          action: "UPDATE",
-          entity: "User",
-          entityId: userId,
-          oldValues: {
-            isVerified: user.isVerified,
-            roleId: user.roleId,
-            roleName: oldRole?.name || null,
-          },
-          newValues: {
-            isVerified: updated.isVerified,
-            roleId: updated.roleId,
-            roleName: newRole?.name || null,
-          },
-          userId: approverId,
+      await createAuditLog(tx, {
+        action: "UPDATE",
+        entity: "User",
+        entityId: userId,
+        oldValues: {
+          isVerified: user.isVerified,
+          roleId: user.roleId,
+          roleName: oldRole?.name || null,
         },
+        newValues: {
+          isVerified: updated.isVerified,
+          roleId: updated.roleId,
+          roleName: newRole?.name || null,
+        },
+        userId: approverId,
       });
 
       return { updated, newRole };
@@ -241,10 +248,73 @@ export async function getAllUsers({ page = 1, limit = 10, search } = {}) {
   }
 }
 
+export async function getUserImage(userId) {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, name: true, imageId: true },
+    });
+
+    if (!user) {
+      throw new ResponseError(404, "User not found");
+    }
+
+    if (!user.imageId) {
+      throw new ResponseError(404, "User has no image");
+    }
+
+    const image = await prisma.image.findUnique({
+      where: { id: user.imageId },
+    });
+
+    if (!image) {
+      throw new ResponseError(404, "Image not found");
+    }
+
+    return image;
+  } catch (err) {
+    if (err instanceof ResponseError) throw err;
+    throw new ResponseError(500, `Failed to get user image: ${err.message}`);
+  }
+}
+
+export async function deleteUserImage(userId, actorUserId = null) {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, name: true, imageId: true },
+    });
+
+    if (!user) {
+      throw new ResponseError(404, "User not found");
+    }
+
+    if (!user.imageId) {
+      throw new ResponseError(404, "User has no image");
+    }
+
+    // Delete the image using image service
+    const result = await deleteImage(user.imageId, actorUserId);
+
+    // Update user to remove imageId
+    await prisma.user.update({
+      where: { id: userId },
+      data: { imageId: null },
+    });
+
+    return result.image;
+  } catch (err) {
+    if (err instanceof ResponseError) throw err;
+    throw new ResponseError(500, `Failed to delete user image: ${err.message}`);
+  }
+}
+
 export default {
   addImageToUser,
   getUserById,
   updateUserById,
   approveUserByAdmin,
   getAllUsers,
+  getUserImage,
+  deleteUserImage,
 };

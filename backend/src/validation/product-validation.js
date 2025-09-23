@@ -4,17 +4,14 @@ export const productUpdateSchema = z.object({
   name: z.string().min(1).optional(),
   description: z.string().optional(),
   unit: z.string().optional(),
-  sellingPrice: z
-    .union([z.coerce.bigint(), z.string().regex(/^[0-9]+$/)])
-    .optional(),
-  isPerishable: z.boolean().optional(),
+  sellingPrice: z.coerce.number().int().min(0).optional(),
   isActive: z.boolean().optional(),
-  categoryId: z.string().optional(),
+  categoryId: z.cuid().optional(),
 });
 
 export const productBatchCreateSchema = z.object({
   quantity: z.number().int().gt(0, "Quantity must be greater than 0"),
-  costPrice: z.union([z.coerce.bigint(), z.string().regex(/^[0-9]+$/)]),
+  costPrice: z.coerce.number().int().min(0),
   receivedAt: z.string().optional(),
   expiredAt: z.string().optional(),
   status: z.enum(["AVAILABLE", "EXPIRED", "SOLD_OUT"]).optional(),
@@ -25,43 +22,44 @@ export const productIdParamSchema = z.uuid();
 export const productCreateSchema = z
   .object({
     name: z.string().min(1, "Product name is required"),
-    barcode: z.string().optional(),
-    description: z.string().optional(),
+    barcode: z
+      .string()
+      .transform((val) => (val === "" ? undefined : val))
+      .optional(),
+    description: z
+      .string()
+      .transform((val) => (val === "" ? undefined : val))
+      .optional(),
 
     unit: z.string().default("pcs"),
 
-    sellingPrice: z.union([z.coerce.bigint(), z.string()]).refine((val) => {
-      try {
-        if (typeof val === "bigint") return val > 0n;
-        if (typeof val === "string") {
-          const num = BigInt(val);
-          return num > 0n;
-        }
-        return false;
-      } catch {
-        return false;
-      }
-    }, "Selling price must be a valid positive number"),
+    sellingPrice: z.coerce
+      .number()
+      .int()
+      .positive("Selling price must be a valid positive number"),
 
-    costPrice: z.union([z.coerce.bigint(), z.string()]).refine((val) => {
-      try {
-        if (typeof val === "bigint") return val > 0n;
-        if (typeof val === "string") {
-          const num = BigInt(val);
-          return num > 0n;
-        }
-        return false;
-      } catch {
-        return false;
-      }
-    }, "Cost price must be a valid positive number"),
+    costPrice: z.coerce
+      .number()
+      .int()
+      .positive("Cost price must be a valid positive number"),
 
-    categoryId: z.string().optional(),
+    categoryId: z
+      .cuid()
+      .transform((val) => (val === "" ? undefined : val))
+      .optional(),
 
     quantity: z.coerce.number().int().gt(0, "Quantity must be greater than 0"),
-    receivedAt: z.coerce.date().default(() => new Date()),
-    expiredAt: z.coerce.date().nullable().optional(),
-    movementNote: z.string().optional(),
+    receivedAt: z
+      .union([z.coerce.date(), z.literal("").transform(() => new Date())])
+      .default(() => new Date()),
+    expiredAt: z
+      .union([z.coerce.date(), z.literal("").transform(() => null)])
+      .nullable()
+      .optional(),
+    movementNote: z
+      .string()
+      .transform((val) => (val === "" ? undefined : val))
+      .optional(),
 
     isPerishable: z
       .union([z.boolean(), z.string()])
@@ -90,7 +88,7 @@ export const productCreateSchema = z
 export const updateProductBatchValidation = z.object({
   status: z.enum(["AVAILABLE", "EXPIRED", "SOLD_OUT"]).optional(),
   quantity: z.number().int().min(0).optional(),
-  costPrice: z.union([z.coerce.bigint(), z.string().regex(/^[0-9]+$/)]).optional(),
+  costPrice: z.coerce.number().int().positive().optional(),
   receivedAt: z.coerce.date().optional(),
   expiredAt: z.coerce.date().optional(),
   notes: z.string().optional(),
@@ -98,16 +96,16 @@ export const updateProductBatchValidation = z.object({
 
 export const addProductStockValidation = z.object({
   quantity: z.number().int().positive(),
-  costPrice: z.union([z.coerce.bigint(), z.string().regex(/^[0-9]+$/)]),
-  receivedAt: z.coerce.date(),
+  costPrice: z.coerce.number().int().positive(),
+  receivedAt: z.coerce.date().default(() => new Date()),
   expiredAt: z.coerce.date().optional(),
   note: z.string().optional(),
 });
 
 // Schema untuk bulk create products - bisa array atau single object
 export const productBulkCreateSchema = z.union([
-  productCreateSchema, // Single product
   z.array(productCreateSchema).min(1).max(50), // Array of products, max 50 untuk efisiensi
+  productCreateSchema, // Single product
 ]);
 
 export default {
