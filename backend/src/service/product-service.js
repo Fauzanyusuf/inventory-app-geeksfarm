@@ -593,7 +593,7 @@ export async function deleteProduct(id, userId = null) {
     const result = await prisma.$transaction(async (tx) => {
       const deleted = await tx.product.update({
         where: { id },
-        data: { isDeleted: true, deletedAt: new Date() },
+        data: { isDeleted: true },
       });
 
       await createAuditLog(tx, {

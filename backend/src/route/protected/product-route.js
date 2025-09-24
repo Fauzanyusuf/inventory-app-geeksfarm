@@ -51,6 +51,12 @@ router.patch(
 );
 
 router.delete(
+  "/:id",
+  rbacMiddleware(["product:manage"]),
+  productController.deleteProduct
+);
+
+router.delete(
   "/:productId/images/:imgId",
   rbacMiddleware(["product:manage"]),
   productController.deleteProductImage

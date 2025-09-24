@@ -187,16 +187,6 @@ export async function deleteProductImage(req, res, next) {
   }
 }
 
-export async function deleteProduct(req, res, next) {
-  try {
-    const id = req.params.id;
-    await productService.deleteProduct(id, req.user?.sub || null);
-    return res.status(204).json({ message: "Product deleted" });
-  } catch (err) {
-    next(err);
-  }
-}
-
 export async function listProductBatchesByProduct(req, res, next) {
   try {
     const productId = req.params.id;
@@ -249,6 +239,20 @@ export async function addProductStock(req, res, next) {
     res.status(201).json({
       data: result,
       message: "Stock added successfully",
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteProduct(req, res, next) {
+  try {
+    const productId = validate(productIdParamSchema, req.params.id);
+
+    await productService.deleteProduct(productId, req.user?.sub || null);
+
+    return res.status(204).json({
+      message: "Product deleted successfully",
     });
   } catch (err) {
     next(err);
