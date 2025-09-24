@@ -1,6 +1,7 @@
 import { prisma } from "../application/database.js";
 import { ResponseError } from "../utils/response-error.js";
 import { replaceOneToOneImage, deleteImage } from "./image-service.js";
+import { deleteFile } from "../utils/image-utils.js";
 import { logger } from "../application/logging.js";
 import { createAuditLog } from "../utils/audit-utils.js";
 
@@ -220,12 +221,12 @@ export async function uploadImage(id, fileInfo, userId = null) {
   });
 
   if (!category) {
-    await deleteImage(fileInfo.filename);
+    await deleteFile(fileInfo.filename);
     throw new ResponseError(404, "Category not found");
   }
 
   if (category.isDeleted) {
-    await deleteImage(fileInfo.filename);
+    await deleteFile(fileInfo.filename);
     throw new ResponseError(410, "Cannot upload image to deleted category");
   }
 

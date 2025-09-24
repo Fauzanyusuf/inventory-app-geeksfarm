@@ -5,7 +5,7 @@ import { ResponseError } from "../utils/response-error.js";
 import { uploadsDir, uploadsUrlPrefix } from "../config/uploads.js";
 import { logger } from "../application/logging.js";
 
-export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+export const MAX_FILE_SIZE = 5 * 1024 * 1024;
 export const IMAGE_MIME_TYPES = new Set([
   "image/jpeg",
   "image/png",

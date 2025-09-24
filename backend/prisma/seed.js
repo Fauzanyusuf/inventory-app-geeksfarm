@@ -80,9 +80,7 @@ async function main() {
   // Jangan hapus User, Role, AccessPermission sesuai request
   // Jadi hanya hapus data dari model lain saja agar tidak duplicate
   await prisma.image.deleteMany({});
-  await prisma.cartItem.deleteMany({});
   await prisma.cart.deleteMany({});
-  await prisma.orderItem.deleteMany({});
   await prisma.order.deleteMany({});
   await prisma.address.deleteMany({});
   await prisma.stockMovement.deleteMany({});
@@ -297,19 +295,6 @@ async function main() {
     orders.push(order);
   }
 
-  // --- Order Items ---
-  for (let i = 0; i < 20; i++) {
-    const order = orders[i % orders.length];
-    const product = products[i % products.length];
-    await prisma.orderItem.create({
-      data: {
-        orderId: order.id,
-        productId: product.id,
-        quantity: (i % 5) + 1,
-      },
-    });
-  }
-
   // --- Carts and Cart Items ---
   for (let i = 0; i < Math.min(users.length, 10); i++) {
     const user = users[i];
@@ -318,18 +303,6 @@ async function main() {
         userId: user.id,
       },
     });
-
-    // 1-5 items per cart
-    for (let j = 0; j < 3; j++) {
-      const product = products[(i + j) % products.length];
-      await prisma.cartItem.create({
-        data: {
-          cartId: cart.id,
-          productId: product.id,
-          quantity: j + 1,
-        },
-      });
-    }
   }
 
   // --- Images ---

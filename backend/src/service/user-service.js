@@ -1,6 +1,7 @@
 import { prisma } from "../application/database.js";
 import { ResponseError } from "../utils/response-error.js";
 import { replaceOneToOneImage, deleteImage } from "./image-service.js";
+import { deleteFile } from "../utils/image-utils.js";
 import { createAuditLog } from "../utils/audit-utils.js";
 
 export async function addImageToUser(userId, fileInfo, actorUserId = null) {
@@ -8,14 +9,14 @@ export async function addImageToUser(userId, fileInfo, actorUserId = null) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       // Cleanup uploaded file if user not found
-      await deleteImage(fileInfo.filename);
+      await deleteFile(fileInfo.filename);
       throw new ResponseError(404, "User not found");
     }
 
     // Check if user is deleted
     if (user.isDeleted) {
       // Cleanup uploaded file if user is deleted
-      await deleteImage(fileInfo.filename);
+      await deleteFile(fileInfo.filename);
       throw new ResponseError(410, "Cannot upload image to deleted user");
     }
 

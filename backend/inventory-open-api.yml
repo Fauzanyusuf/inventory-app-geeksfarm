@@ -4,7 +4,7 @@ info:
   description: API for managing inventory, products, users, categories, and stock movements with role-based access control
   version: "1.0.0"
 servers:
-  - url: http://localhost:3000/api
+  - url: http://localhost:4000/api
     description: Development server
 
 # ========================================================================================
@@ -90,11 +90,13 @@ components:
     RegisterRequest:
       type: object
       required:
+        - name
         - email
         - password
       properties:
         name:
           type: string
+          minLength: 2
           maxLength: 100
           description: User full name
         email:
@@ -114,7 +116,7 @@ components:
           description: Indonesian phone number format
         sex:
           type: string
-          enum: [Male, Female]
+          enum: [MALE, FEMALE]
           description: User gender
 
     AuthResponse:
@@ -128,6 +130,8 @@ components:
               description: JWT access token
             user:
               $ref: "#/components/schemas/User"
+        message:
+          type: string
 
     RefreshResponse:
       type: object
@@ -138,6 +142,8 @@ components:
             accessToken:
               type: string
               description: New JWT access token
+        message:
+          type: string
 
     # User schemas
     User:
@@ -156,19 +162,18 @@ components:
         sex:
           type: string
           enum: [MALE, FEMALE]
-        roleId:
-          type: string
-          format: uuid
-        isVerified:
-          type: boolean
-        isDeleted:
-          type: boolean
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
+        role:
+          type: object
+          properties:
+            name:
+              type: string
+        image:
+          type: object
+          properties:
+            url:
+              type: string
+            thumbnailUrl:
+              type: string
 
     UpdateUserRequest:
       type: object
@@ -207,6 +212,8 @@ components:
             $ref: "#/components/schemas/User"
         meta:
           $ref: "#/components/schemas/PaginationMeta"
+        message:
+          type: string
 
     # Product schemas
     Product:
@@ -224,22 +231,49 @@ components:
         unit:
           type: string
         sellingPrice:
-          type: decimal
-          description:
+          type: number
+          description: Selling price as number
         isPerishable:
           type: boolean
         isActive:
           type: boolean
-        categoryId:
-          type: string
-          description: Category ID (CUID format)
         category:
-          $ref: "#/components/schemas/Category"
+          type: object
+          properties:
+            id:
+              type: string
+              format: cuid
+            name:
+              type: string
         images:
           type: array
           items:
-            $ref: "#/components/schemas/Image"
-        totalStock:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              url:
+                type: string
+              thumbnailUrl:
+                type: string
+        batches:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              quantity:
+                type: integer
+              status:
+                type: string
+                enum: [AVAILABLE, EXPIRED, SOLD_OUT]
+              expiredAt:
+                type: string
+                format: date-time
+        totalQuantity:
           type: integer
         createdAt:
           type: string
@@ -397,6 +431,8 @@ components:
             $ref: "#/components/schemas/Product"
         meta:
           $ref: "#/components/schemas/PaginationMeta"
+        message:
+          type: string
 
     # Category schemas
     Category:
@@ -404,21 +440,31 @@ components:
       properties:
         id:
           type: string
-          format: uuid
+          format: cuid
         name:
           type: string
         description:
           type: string
         image:
-          $ref: "#/components/schemas/Image"
-        isDeleted:
-          type: boolean
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            url:
+              type: string
+            thumbnailUrl:
+              type: string
+        products:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              name:
+                type: string
 
     CreateCategoryRequest:
       type: object
@@ -451,6 +497,8 @@ components:
             $ref: "#/components/schemas/Category"
         meta:
           $ref: "#/components/schemas/PaginationMeta"
+        message:
+          type: string
 
     # Stock Movement schemas
     CommitSalesRequest:
@@ -501,6 +549,28 @@ components:
         createdAt:
           type: string
           format: date-time
+        product:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            barcode:
+              type: string
+        productBatch:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            expiredAt:
+              type: string
+              format: date-time
+            status:
+              type: string
+              enum: [AVAILABLE, EXPIRED, SOLD_OUT]
 
     # Image schema
     Image:
@@ -537,18 +607,14 @@ components:
         id:
           type: string
           format: uuid
-        userId:
-          type: string
-          format: uuid
         action:
           type: string
-          description: Action performed (CREATE, UPDATE, DELETE, LOGIN, etc.)
-        entityType:
+          enum: [CREATE, UPDATE, DELETE, LOGIN, LOGOUT, OTHER]
+        entity:
           type: string
           description: Type of entity affected (User, Product, Category, etc.)
         entityId:
           type: string
-          format: uuid
           description: ID of the affected entity
         oldValues:
           type: object
@@ -556,15 +622,19 @@ components:
         newValues:
           type: object
           description: New values after change
-        ipAddress:
-          type: string
-          description: IP address of the user
-        userAgent:
-          type: string
-          description: User agent string
         createdAt:
           type: string
           format: date-time
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            email:
+              type: string
 
     # Role schema
     Role:
@@ -572,19 +642,13 @@ components:
       properties:
         id:
           type: string
-          format: uuid
+          format: cuid
         name:
           type: string
-        description:
-          type: string
-        isActive:
-          type: boolean
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
+        permissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/AccessPermission"
 
     # Access permission schema
     AccessPermission:
@@ -592,22 +656,20 @@ components:
       properties:
         id:
           type: string
-          format: uuid
+          format: cuid
         accessKey:
           type: string
           description: Permission key (e.g., user:read, product:manage)
-        name:
-          type: string
-          description: Human-readable permission name
-        description:
-          type: string
-          description: Permission description
-        module:
-          type: string
-          description: Module this permission belongs to
-        createdAt:
-          type: string
-          format: date-time
+        role:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: cuid
+              name:
+                type: string
 
     # Query parameters
     PaginationQuery:
@@ -642,25 +704,35 @@ paths:
           multipart/form-data:
             schema:
               type: object
+              required:
+                - name
+                - email
+                - password
               properties:
                 name:
                   type: string
+                  minLength: 2
                   maxLength: 100
+                  description: User full name
                 email:
                   type: string
                   format: email
                   maxLength: 100
+                  description: User email address
                 password:
                   type: string
                   minLength: 6
                   maxLength: 100
+                  description: User password
                 phone:
                   type: string
                   pattern: '^(\\+62|62|0)[8-9][0-9]{7,11}$'
                   maxLength: 20
+                  description: Indonesian phone number format
                 sex:
                   type: string
                   enum: [MALE, FEMALE]
+                  description: User gender
                 image:
                   type: string
                   format: binary
@@ -671,7 +743,18 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthResponse"
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: "#/components/schemas/User"
+                      accessToken:
+                        type: string
+                        description: JWT access token
+                  message:
+                    type: string
         "400":
           description: Validation error
           content:
@@ -695,7 +778,16 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthResponse"
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      accessToken:
+                        type: string
+                        description: JWT access token
+                  message:
+                    type: string
         "401":
           description: Invalid credentials
           content:
@@ -957,6 +1049,8 @@ paths:
                 properties:
                   data:
                     $ref: "#/components/schemas/Category"
+                  message:
+                    type: string
         "400":
           description: Validation error
           content:
@@ -993,6 +1087,8 @@ paths:
                 properties:
                   data:
                     $ref: "#/components/schemas/Category"
+                  message:
+                    type: string
         "404":
           description: Category not found
           content:
@@ -1043,6 +1139,8 @@ paths:
                 properties:
                   data:
                     $ref: "#/components/schemas/Category"
+                  message:
+                    type: string
         "400":
           description: Validation error
           content:
@@ -1068,7 +1166,7 @@ paths:
             type: string
             format: cuid
       responses:
-        "204":
+        "200":
           description: Category deleted successfully
           content:
             application/json:
@@ -1119,6 +1217,8 @@ paths:
                 properties:
                   data:
                     $ref: "#/components/schemas/Image"
+                  message:
+                    type: string
         "403":
           description: Insufficient permissions
           content:
@@ -1238,7 +1338,7 @@ paths:
                 $ref: "#/components/schemas/Error"
     post:
       summary: Create product
-      description: Create a new product with optional images (requires product:manage permission)
+      description: Create a new product or multiple products with optional images (requires product:manage permission). Supports both single product object and array of products for bulk creation.
       security:
         - bearerAuth: []
       requestBody:
@@ -1250,7 +1350,8 @@ paths:
               properties:
                 name:
                   type: string
-                  description: Product name
+                  minLength: 1
+                  description: Product name (required for single product)
                 barcode:
                   type: string
                   description: Product barcode
@@ -1262,11 +1363,15 @@ paths:
                   default: pcs
                   description: Unit of measurement
                 sellingPrice:
-                  type: string
-                  description: Selling price as string
+                  oneOf:
+                    - type: string
+                    - type: integer
+                  description: Selling price (must be positive)
                 costPrice:
-                  type: string
-                  description: Cost price as string
+                  oneOf:
+                    - type: string
+                    - type: integer
+                  description: Cost price (must be positive)
                 categoryId:
                   type: string
                   description: Category ID (CUID format)
@@ -1281,7 +1386,7 @@ paths:
                 expiredAt:
                   type: string
                   format: date-time
-                  description: Expiration date
+                  description: Expiration date (required if perishable)
                 movementNote:
                   type: string
                   description: Note for stock movement
@@ -1298,14 +1403,20 @@ paths:
                   description: Product images (max 5 files)
       responses:
         "201":
-          description: Product created successfully
+          description: Product(s) created successfully
           content:
             application/json:
               schema:
                 type: object
                 properties:
                   data:
-                    $ref: "#/components/schemas/Product"
+                    oneOf:
+                      - $ref: "#/components/schemas/Product"
+                      - type: array
+                        items:
+                          $ref: "#/components/schemas/Product"
+                  message:
+                    type: string
         "400":
           description: Validation error
           content:
@@ -1342,6 +1453,8 @@ paths:
                 properties:
                   data:
                     $ref: "#/components/schemas/Product"
+                  message:
+                    type: string
         "404":
           description: Product not found
           content:
@@ -1376,6 +1489,8 @@ paths:
                 properties:
                   data:
                     $ref: "#/components/schemas/Product"
+                  message:
+                    type: string
         "400":
           description: Invalid input data
           content:
@@ -1435,6 +1550,8 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/Image"
+                  message:
+                    type: string
         "403":
           description: Insufficient permissions
           content:
@@ -1614,6 +1731,8 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/ProductBatch"
+                  message:
+                    type: string
         "403":
           description: Insufficient permissions
           content:
@@ -1656,6 +1775,8 @@ paths:
                 properties:
                   data:
                     $ref: "#/components/schemas/ProductBatch"
+                  message:
+                    type: string
         "403":
           description: Insufficient permissions
           content:
@@ -1692,6 +1813,8 @@ paths:
                 properties:
                   data:
                     $ref: "#/components/schemas/ProductBatch"
+                  message:
+                    type: string
         "403":
           description: Insufficient permissions
           content:
@@ -1821,6 +1944,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+
+  # SALES RESOURCE
+  /sales/commit:
     post:
       summary: Commit sales transaction
       description: Process multiple product sales in a single transaction (requires inventory:manage permission)
@@ -1914,6 +2040,8 @@ paths:
                 properties:
                   data:
                     $ref: "#/components/schemas/User"
+                  message:
+                    type: string
     patch:
       summary: Update current user profile
       description: Update current authenticated user's profile
@@ -1935,6 +2063,8 @@ paths:
                 properties:
                   data:
                     $ref: "#/components/schemas/User"
+                  message:
+                    type: string
         "400":
           description: Validation error
           content:
@@ -1965,6 +2095,8 @@ paths:
                 properties:
                   data:
                     $ref: "#/components/schemas/User"
+                  message:
+                    type: string
         "403":
           description: Insufficient permissions
           content:
@@ -1997,7 +2129,7 @@ paths:
                   format: binary
                   description: Profile image file
       responses:
-        "200":
+        "201":
           description: Image uploaded successfully
           content:
             application/json:
@@ -2005,7 +2137,16 @@ paths:
                 type: object
                 properties:
                   data:
-                    $ref: "#/components/schemas/Image"
+                    type: object
+                    properties:
+                      image:
+                        $ref: "#/components/schemas/Image"
+                      user:
+                        $ref: "#/components/schemas/User"
+                      prevImage:
+                        $ref: "#/components/schemas/Image"
+                  message:
+                    type: string
         "403":
           description: Insufficient permissions
           content:
@@ -2088,6 +2229,8 @@ paths:
                 properties:
                   data:
                     $ref: "#/components/schemas/User"
+                  message:
+                    type: string
         "403":
           description: Insufficient permissions
           content:

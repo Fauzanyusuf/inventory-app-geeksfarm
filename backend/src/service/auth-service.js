@@ -3,7 +3,8 @@ import { logger } from "../application/logging.js";
 import { signRefreshToken, signToken, verifyToken } from "../utils/jwt.js";
 import { ResponseError } from "../utils/response-error.js";
 import bcrypt from "bcrypt";
-import { replaceOneToOneImage, deleteImage } from "./image-service.js";
+import { replaceOneToOneImage } from "./image-service.js";
+import { deleteFile } from "../utils/image-utils.js";
 import { createAuditLog } from "../utils/audit-utils.js";
 
 export async function register(request, file = null) {
@@ -15,13 +16,13 @@ export async function register(request, file = null) {
 
     const existing = await prisma.user.findFirst({
       where: whereClause,
-      select: { id: true, email: true, phone: true, isDeleted: true }
+      select: { id: true, email: true, phone: true, isDeleted: true },
     });
 
     if (existing) {
       // Cleanup uploaded file if registration fails
       if (file) {
-        await deleteImage(file.filename);
+        await deleteFile(file.filename);
       }
 
       if (existing.email === request.email) {

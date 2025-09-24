@@ -2,6 +2,7 @@ import { prisma } from "../application/database.js";
 import { ResponseError } from "../utils/response-error.js";
 import { logger } from "../application/logging.js";
 import { processAndCreateImages, deleteImage } from "./image-service.js";
+import { deleteFile } from "../utils/image-utils.js";
 import { createAuditLog } from "../utils/audit-utils.js";
 
 function getBatchStatus(expiredAt, quantity) {
@@ -300,12 +301,12 @@ export async function addImagesToProduct(productId, filesInfo, userId = null) {
     });
 
     if (!productCheck) {
-      await Promise.all(filesInfo.map((file) => deleteImage(file.filename)));
+      await Promise.all(filesInfo.map((file) => deleteFile(file.filename)));
       throw new ResponseError(404, "Product not found");
     }
 
     if (productCheck.isDeleted) {
-      await Promise.all(filesInfo.map((file) => deleteImage(file.filename)));
+      await Promise.all(filesInfo.map((file) => deleteFile(file.filename)));
       throw new ResponseError(410, "Cannot upload images to deleted product");
     }
 
