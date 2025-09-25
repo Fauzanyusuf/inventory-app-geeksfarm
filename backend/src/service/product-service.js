@@ -242,10 +242,12 @@ export async function createProduct(data, userId = null, files = null) {
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      const existingProduct = await tx.product.findUnique({
-        where: { barcode: productData.barcode },
-      });
-      if (existingProduct) throw new ResponseError(409, "Duplicate barcode");
+      if (productData.barcode) {
+        const existingProduct = await tx.product.findUnique({
+          where: { barcode: productData.barcode },
+        });
+        if (existingProduct) throw new ResponseError(409, "Duplicate barcode");
+      }
 
       return await createProductWithBatch(
         tx,
