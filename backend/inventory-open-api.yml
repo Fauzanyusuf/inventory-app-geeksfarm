@@ -51,8 +51,16 @@ components:
       type: object
       properties:
         errors:
-          type: string
-          description: Error message
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                description: Field that caused the error
+              message:
+                type: string
+                description: Error message
 
     PaginationMeta:
       type: object
@@ -152,28 +160,60 @@ components:
         id:
           type: string
           format: uuid
+          description: User unique identifier
         name:
           type: string
+          maxLength: 100
+          description: User full name
         email:
           type: string
           format: email
+          maxLength: 100
+          description: User email address
         phone:
           type: string
+          maxLength: 20
+          description: User phone number
         sex:
           type: string
           enum: [MALE, FEMALE]
+          description: User gender
+        isVerified:
+          type: boolean
+          description: Whether user email is verified
+        createdAt:
+          type: string
+          format: date-time
+          description: User creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: User last update timestamp
         role:
           type: object
           properties:
+            id:
+              type: string
+              description: Role ID
             name:
               type: string
+              description: Role name
         image:
           type: object
           properties:
+            id:
+              type: string
+              format: uuid
+              description: Image ID
             url:
               type: string
+              description: Image URL
             thumbnailUrl:
               type: string
+              description: Thumbnail image URL
+            altText:
+              type: string
+              description: Image alt text
 
     UpdateUserRequest:
       type: object
@@ -181,17 +221,21 @@ components:
         name:
           type: string
           maxLength: 100
+          description: User full name
         email:
           type: string
           format: email
           maxLength: 100
+          description: User email address
         phone:
           type: string
           pattern: '^(\\+62|62|0)[8-9][0-9]{7,11}$'
           maxLength: 20
+          description: Indonesian phone number format
         sex:
           type: string
           enum: [MALE, FEMALE]
+          description: User gender
 
     ApproveUserRequest:
       type: object
@@ -222,67 +266,76 @@ components:
         id:
           type: string
           format: uuid
+          description: Product unique identifier
         name:
           type: string
+          maxLength: 100
+          description: Product name
         barcode:
           type: string
+          maxLength: 50
+          description: Product barcode
         description:
           type: string
+          description: Product description
         unit:
           type: string
+          maxLength: 20
+          default: pcs
+          description: Unit of measurement
         sellingPrice:
-          type: number
-          description: Selling price as number
+          type: integer
+          minimum: 0
+          description: Selling price in rupiah
         isPerishable:
           type: boolean
+          default: false
+          description: Whether product can expire
         isActive:
           type: boolean
+          default: true
+          description: Whether product is active
+        createdAt:
+          type: string
+          format: date-time
+          description: Product creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Product last update timestamp
         category:
           type: object
           properties:
             id:
               type: string
-              format: cuid
+              description: Category ID
             name:
               type: string
+              maxLength: 100
+              description: Category name
         images:
           type: array
           items:
-            type: object
-            properties:
-              id:
-                type: string
-                format: uuid
-              url:
-                type: string
-              thumbnailUrl:
-                type: string
+            $ref: "#/components/schemas/Image"
         batches:
           type: array
           items:
-            type: object
-            properties:
-              id:
-                type: string
-                format: uuid
-              quantity:
-                type: integer
-              status:
-                type: string
-                enum: [AVAILABLE, EXPIRED, SOLD_OUT]
-              expiredAt:
-                type: string
-                format: date-time
+            $ref: "#/components/schemas/ProductBatch"
         totalQuantity:
           type: integer
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
+          description: Total quantity across all batches
 
     CreateProductRequest:
+      oneOf:
+        - $ref: "#/components/schemas/ProductCreateSingle"
+        - type: array
+          items:
+            $ref: "#/components/schemas/ProductCreateSingle"
+          minItems: 1
+          maxItems: 50
+          description: Array of products for bulk creation
+
+    ProductCreateSingle:
       type: object
       required:
         - name
@@ -305,19 +358,13 @@ components:
           default: pcs
           description: Unit of measurement
         sellingPrice:
-          oneOf:
-            - type: string
-              description: Price as string (will be converted to BigInt)
-            - type: integer
-              description: Price as integer
-          description: Selling price must be positive
+          type: integer
+          minimum: 0
+          description: Selling price must be positive integer
         costPrice:
-          oneOf:
-            - type: string
-              description: Cost as string (will be converted to BigInt)
-            - type: integer
-              description: Cost as integer
-          description: Cost price must be positive
+          type: integer
+          minimum: 0
+          description: Cost price must be positive integer
         categoryId:
           type: string
           description: Category ID (CUID format)
@@ -328,7 +375,7 @@ components:
         receivedAt:
           type: string
           format: date-time
-          description: When stock was received
+          description: When stock was received (defaults to now)
         expiredAt:
           type: string
           format: date-time
@@ -347,19 +394,23 @@ components:
         name:
           type: string
           minLength: 1
+          description: Product name
         description:
           type: string
+          description: Product description
         unit:
           type: string
+          description: Unit of measurement
         sellingPrice:
-          oneOf:
-            - type: string
-            - type: integer
-          description: Selling price as BigInt
+          type: integer
+          minimum: 0
+          description: Selling price as positive integer
         isPerishable:
           type: boolean
+          description: Whether product can expire
         isActive:
           type: boolean
+          description: Whether product is active
         categoryId:
           type: string
           description: Category ID (CUID format)
@@ -370,25 +421,32 @@ components:
         id:
           type: string
           format: uuid
-        productId:
-          type: string
-          format: uuid
+          description: Batch unique identifier
         quantity:
           type: integer
+          minimum: 0
+          description: Quantity in this batch
         costPrice:
-          type: string
+          type: integer
+          minimum: 0
+          description: Cost price per unit in rupiah
         status:
           type: string
           enum: [AVAILABLE, EXPIRED, SOLD_OUT]
+          default: AVAILABLE
+          description: Batch status
         receivedAt:
           type: string
           format: date-time
+          description: When batch was received
         expiredAt:
           type: string
           format: date-time
+          description: Batch expiration date
         createdAt:
           type: string
           format: date-time
+          description: Batch creation timestamp
 
     UpdateProductBatchRequest:
       type: object
@@ -396,31 +454,52 @@ components:
         status:
           type: string
           enum: [AVAILABLE, EXPIRED, SOLD_OUT]
+          description: Batch status
         quantity:
           type: integer
           minimum: 0
+          description: Quantity in batch
         costPrice:
-          oneOf:
-            - type: string
-            - type: integer
+          type: integer
+          minimum: 0
+          description: Cost price per unit
         receivedAt:
           type: string
           format: date-time
+          description: When batch was received
         expiredAt:
           type: string
           format: date-time
+          description: Batch expiration date
         notes:
           type: string
+          description: Additional notes
 
     AddProductStockRequest:
       type: object
       required:
         - quantity
+        - costPrice
       properties:
         quantity:
           type: integer
           minimum: 1
-          description: Quantity to add to stock
+          description: Quantity to add
+        costPrice:
+          type: integer
+          minimum: 0
+          description: Cost price per unit
+        receivedAt:
+          type: string
+          format: date-time
+          description: When stock was received (defaults to now)
+        expiredAt:
+          type: string
+          format: date-time
+          description: Expiration date
+        note:
+          type: string
+          description: Note for stock movement
 
     ProductsListResponse:
       type: object
@@ -440,21 +519,24 @@ components:
       properties:
         id:
           type: string
-          format: cuid
+          description: Category unique identifier (CUID format)
         name:
           type: string
+          maxLength: 100
+          description: Category name
         description:
           type: string
+          description: Category description
+        createdAt:
+          type: string
+          format: date-time
+          description: Category creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Category last update timestamp
         image:
-          type: object
-          properties:
-            id:
-              type: string
-              format: uuid
-            url:
-              type: string
-            thumbnailUrl:
-              type: string
+          $ref: "#/components/schemas/Image"
         products:
           type: array
           items:
@@ -463,8 +545,11 @@ components:
               id:
                 type: string
                 format: uuid
+                description: Product ID
               name:
                 type: string
+                maxLength: 100
+                description: Product name
 
     CreateCategoryRequest:
       type: object
@@ -474,6 +559,7 @@ components:
         name:
           type: string
           minLength: 1
+          maxLength: 100
           description: Category name
         description:
           type: string
@@ -485,8 +571,11 @@ components:
         name:
           type: string
           minLength: 1
+          maxLength: 100
+          description: Category name
         description:
           type: string
+          description: Category description
 
     CategoriesListResponse:
       type: object
@@ -533,44 +622,51 @@ components:
         id:
           type: string
           format: uuid
-        productId:
-          type: string
-          format: uuid
-        productBatchId:
-          type: string
-          format: uuid
+          description: Stock movement unique identifier
         quantity:
           type: integer
+          description: Quantity moved
         movementType:
           type: string
           enum: [IN, OUT, ADJUSTMENT]
+          description: Type of stock movement
         note:
           type: string
+          description: Movement note
         createdAt:
           type: string
           format: date-time
+          description: Movement timestamp
         product:
           type: object
           properties:
             id:
               type: string
               format: uuid
+              description: Product ID
             name:
               type: string
+              maxLength: 100
+              description: Product name
             barcode:
               type: string
+              maxLength: 50
+              description: Product barcode
         productBatch:
           type: object
           properties:
             id:
               type: string
               format: uuid
+              description: Batch ID
             expiredAt:
               type: string
               format: date-time
+              description: Batch expiration date
             status:
               type: string
               enum: [AVAILABLE, EXPIRED, SOLD_OUT]
+              description: Batch status
 
     # Image schema
     Image:
@@ -579,26 +675,23 @@ components:
         id:
           type: string
           format: uuid
+          description: Image unique identifier
         url:
           type: string
-          format: uri
+          maxLength: 255
+          description: Image URL
         thumbnailUrl:
           type: string
-          format: uri
+          maxLength: 255
+          description: Thumbnail image URL
         altText:
           type: string
-        productId:
-          type: string
-          format: uuid
-        categoryId:
-          type: string
-          description: Category ID (CUID format)
-        userId:
-          type: string
-          format: uuid
+          maxLength: 255
+          description: Image alt text
         createdAt:
           type: string
           format: date-time
+          description: Image upload timestamp
 
     # Audit log schema
     AuditLog:
@@ -607,14 +700,18 @@ components:
         id:
           type: string
           format: uuid
+          description: Audit log unique identifier
         action:
           type: string
           enum: [CREATE, UPDATE, DELETE, LOGIN, LOGOUT, OTHER]
+          description: Action performed
         entity:
           type: string
+          maxLength: 100
           description: Type of entity affected (User, Product, Category, etc.)
         entityId:
           type: string
+          maxLength: 100
           description: ID of the affected entity
         oldValues:
           type: object
@@ -625,16 +722,23 @@ components:
         createdAt:
           type: string
           format: date-time
+          description: Log timestamp
         user:
           type: object
           properties:
             id:
               type: string
               format: uuid
+              description: User ID who performed the action
             name:
               type: string
+              maxLength: 100
+              description: User name
             email:
               type: string
+              format: email
+              maxLength: 100
+              description: User email
 
     # Role schema
     Role:
@@ -642,13 +746,20 @@ components:
       properties:
         id:
           type: string
-          format: cuid
+          description: Role unique identifier (CUID format)
         name:
           type: string
+          maxLength: 50
+          description: Role name
+        createdAt:
+          type: string
+          format: date-time
+          description: Role creation timestamp
         permissions:
           type: array
           items:
             $ref: "#/components/schemas/AccessPermission"
+          description: Associated permissions
 
     # Access permission schema
     AccessPermission:
@@ -656,20 +767,23 @@ components:
       properties:
         id:
           type: string
-          format: cuid
+          description: Permission unique identifier (CUID format)
         accessKey:
           type: string
           description: Permission key (e.g., user:read, product:manage)
-        role:
+        roles:
           type: array
           items:
             type: object
             properties:
               id:
                 type: string
-                format: cuid
+                description: Role ID
               name:
                 type: string
+                maxLength: 50
+                description: Role name
+          description: Associated roles
 
     # Query parameters
     PaginationQuery:
