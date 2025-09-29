@@ -10,7 +10,6 @@ async function commitSales({ sales, note }) {
       for (const sale of sales) {
         const { productId, quantity } = sale;
 
-        // Check if product exists
         const product = await tx.product.findUnique({
           where: { id: productId, isDeleted: false },
           select: { id: true, name: true, isPerishable: true },
@@ -27,13 +26,13 @@ async function commitSales({ sales, note }) {
             quantity: { gt: 0 },
           },
           orderBy: product.isPerishable
-            ? { expiredAt: "asc" }
-            : { createdAt: "asc" },
+            ? [{ expiredAt: "asc" }, { id: "asc" }]
+            : [{ createdAt: "asc" }, { id: "asc" }],
           select: {
             id: true,
             quantity: true,
-            expiredAt: true,
             createdAt: true,
+            expiredAt: true,
           },
         });
 
@@ -55,25 +54,20 @@ async function commitSales({ sales, note }) {
           );
         }
 
-        // Sort batches by ID to ensure consistent lock order and prevent deadlocks
-        const sortedBatches = batches.sort((a, b) => a.id.localeCompare(b.id));
-
         const movements = [];
         let remainingQuantity = quantity;
 
-        for (const batch of sortedBatches) {
+        for (const batch of batches) {
           if (remainingQuantity <= 0) break;
 
           const reduceQuantity = Math.min(remainingQuantity, batch.quantity);
+          const newQty = batch.quantity - reduceQuantity;
 
           await tx.productBatch.update({
             where: { id: batch.id },
             data: {
               quantity: { decrement: reduceQuantity },
-              status: getBatchStatus(
-                batch.expiredAt,
-                batch.quantity - reduceQuantity
-              ),
+              status: getBatchStatus(batch.expiredAt, newQty),
             },
           });
 

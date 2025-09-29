@@ -1,13 +1,19 @@
 import { z } from "zod";
 
 export const loginAuthSchema = z.object({
-  email: z.email().max(100),
+  email: z
+    .email()
+    .max(100)
+    .transform((email) => email.toLowerCase().trim()),
   password: z.string().min(6).max(100),
 });
 
 export const registerUserSchema = z.object({
   name: z.string().min(2).max(100),
-  email: z.email().max(100),
+  email: z
+    .email()
+    .max(100)
+    .transform((email) => email.toLowerCase().trim()),
   password: z.string().min(6).max(100),
   phone: z
     .string()

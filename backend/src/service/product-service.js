@@ -2,7 +2,7 @@ import { prisma } from "../application/database.js";
 import { ResponseError } from "../utils/response-error.js";
 import { logger } from "../application/logging.js";
 import { processAndCreateImages, deleteImage } from "./image-service.js";
-import { deleteFile } from "../utils/image-utils.js";
+import { cleanupFilesOnError, deleteFile } from "../utils/image-utils.js";
 import { createAuditLog } from "../utils/audit-utils.js";
 
 function getBatchStatus(expiredAt, quantity) {
@@ -135,10 +135,11 @@ export async function listProducts({ page = 1, limit = 10, search } = {}) {
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: "asc" },
+        orderBy: [{ createdAt: "desc" }, { name: "asc" }],
         select: {
           id: true,
           name: true,
+          barcode: true,
           description: true,
           unit: true,
           sellingPrice: true,
@@ -147,8 +148,8 @@ export async function listProducts({ page = 1, limit = 10, search } = {}) {
             select: { id: true, url: true, thumbnailUrl: true },
           },
           batches: {
-            select: { quantity: true },
             where: { status: { not: "EXPIRED" } },
+            select: { quantity: true },
           },
         },
       }),
@@ -162,8 +163,8 @@ export async function listProducts({ page = 1, limit = 10, search } = {}) {
       );
 
       // eslint-disable-next-line no-unused-vars
-      const { batches, ...rest } = product;
-      return { ...rest, totalQuantity };
+      const { batches, ...result } = product;
+      return { ...result, totalQuantity };
     });
 
     const totalPages = Math.ceil(total / limit) || 1;
@@ -181,10 +182,10 @@ export async function listProducts({ page = 1, limit = 10, search } = {}) {
   }
 }
 
-export async function getProductById(productId) {
+export async function getProductById(id) {
   try {
     const product = await prisma.product.findUnique({
-      where: { id: productId, isDeleted: false },
+      where: { id, isDeleted: false },
       select: {
         id: true,
         name: true,
@@ -202,12 +203,14 @@ export async function getProductById(productId) {
         },
         batches: {
           where: {
-            status: { not: "EXPIRED" },
+            status: "AVAILABLE",
           },
+          orderBy: [{ expiredAt: "asc" }, { receivedAt: "asc" }],
           select: {
             id: true,
             quantity: true,
             status: true,
+            receivedAt: true,
             expiredAt: true,
           },
         },
@@ -221,11 +224,10 @@ export async function getProductById(productId) {
       0
     );
 
-    logger.info(`Retrieved product: ${productId}`);
     return { ...product, totalQuantity };
   } catch (err) {
     if (err instanceof ResponseError) throw err;
-    logger.error(`Error getting product ${productId}: ${err.message}`);
+    logger.error(`Error getting product ${id}: ${err.message}`);
     throw new ResponseError(500, `Failed to get product: ${err.message}`);
   }
 }
@@ -283,9 +285,8 @@ export async function createProduct(data, userId = null, files = null) {
     );
     return { ...result, images: imagesResult };
   } catch (err) {
+    if (files) await cleanupFilesOnError(files);
     if (err instanceof ResponseError) throw err;
-    if (err.code === "P2002")
-      throw new ResponseError(409, "Duplicate value (likely barcode)");
     logger.error(`Error creating product: ${err.message}`);
     throw new ResponseError(500, `Failed to create product: ${err.message}`);
   }
@@ -297,39 +298,27 @@ export async function addImagesToProduct(productId, filesInfo, userId = null) {
   }
 
   try {
-    const productCheck = await prisma.product.findUnique({
-      where: { id: productId },
-      select: { id: true, isDeleted: true },
+    const product = await prisma.product.findUnique({
+      where: { id: productId, isDeleted: false },
     });
 
-    if (!productCheck) {
+    if (!product) {
       await Promise.all(filesInfo.map((file) => deleteFile(file.filename)));
       throw new ResponseError(404, "Product not found");
     }
 
-    if (productCheck.isDeleted) {
-      await Promise.all(filesInfo.map((file) => deleteFile(file.filename)));
-      throw new ResponseError(410, "Cannot upload images to deleted product");
-    }
-
-    const product = await prisma.product.findUnique({
-      where: { id: productId, isDeleted: false },
-      include: { images: true },
-    });
-    if (!product) throw new ResponseError(404, "Product not found");
-
-    const results = await processAndCreateImages(filesInfo, userId, {
+    const result = await processAndCreateImages(filesInfo, userId, {
       productId,
     });
 
-    await createAuditLog(prisma, {
+    createAuditLog(prisma, {
       action: "UPDATE",
       entity: "Product",
       entityId: productId,
       oldValues: { imageCount: product.images?.length || 0 },
       newValues: {
-        imageCount: (product.images?.length || 0) + results.length,
-        newImages: results.map((r) => ({
+        imageCount: (product.images?.length || 0) + result.length,
+        newImages: result.map((r) => ({
           id: r.image.id,
           url: r.image.url,
           thumbnailUrl: r.image.thumbnailUrl,
@@ -338,8 +327,8 @@ export async function addImagesToProduct(productId, filesInfo, userId = null) {
       userId,
     });
 
-    logger.info(`Added ${results.length} images to product: ${productId}`);
-    return results;
+    logger.info(`Added ${result.length} images to product: ${productId}`);
+    return result;
   } catch (err) {
     if (err instanceof ResponseError) throw err;
     logger.error(`Error adding images to product ${productId}: ${err.message}`);
@@ -421,6 +410,7 @@ export async function updateProductImages(
     );
     return results;
   } catch (err) {
+    if (newFiles) await cleanupFilesOnError(newFiles);
     if (err instanceof ResponseError) throw err;
     logger.error(
       `Error updating images for product ${productId}: ${err.message}`
@@ -547,6 +537,7 @@ export async function bulkCreateProducts(
     );
     return results;
   } catch (err) {
+    if (files) await cleanupFilesOnError(files);
     if (err instanceof ResponseError) throw err;
     logger.error(`Error bulk creating products: ${err.message}`);
     throw new ResponseError(500, `Failed to create products: ${err.message}`);
@@ -579,7 +570,6 @@ export async function updateProduct(id, data, userId = null) {
     return result;
   } catch (err) {
     if (err instanceof ResponseError) throw err;
-    if (err.code === "P2025") throw new ResponseError(404, "Product not found");
     logger.error(`Error updating product ${id}: ${err.message}`);
     throw new ResponseError(500, `Failed to update product: ${err.message}`);
   }
@@ -614,7 +604,6 @@ export async function deleteProduct(id, userId = null) {
     return result;
   } catch (err) {
     if (err instanceof ResponseError) throw err;
-    if (err.code === "P2025") throw new ResponseError(404, "Product not found");
     logger.error(`Error deleting product ${id}: ${err.message}`);
     throw new ResponseError(500, `Failed to delete product: ${err.message}`);
   }
@@ -728,8 +717,6 @@ export async function updateProductBatch(
     return updated;
   } catch (err) {
     if (err instanceof ResponseError) throw err;
-    if (err.code === "P2025")
-      throw new ResponseError(404, "Product batch not found");
     logger.error(`Error updating product batch ${batchId}: ${err.message}`);
     throw new ResponseError(
       500,
@@ -786,8 +773,6 @@ export async function addProductStock(productId, data, userId = null) {
     return result;
   } catch (err) {
     if (err instanceof ResponseError) throw err;
-    if (err.code === "P2002")
-      throw new ResponseError(409, "Duplicate batch data");
     logger.error(`Error adding stock to product ${productId}: ${err.message}`);
     throw new ResponseError(500, "Failed to add product stock: Server error");
   }

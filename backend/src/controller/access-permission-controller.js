@@ -20,7 +20,9 @@ export async function listAccessPermissions(req, res, next) {
 export async function getAccessPermission(req, res, next) {
   try {
     const permissionId = req.params.id;
-    const result = await accessPermissionService.getAccessPermissionById(permissionId);
+    const result = await accessPermissionService.getAccessPermissionById(
+      permissionId
+    );
 
     logger.info(`Access permission retrieved: ${permissionId}`);
 

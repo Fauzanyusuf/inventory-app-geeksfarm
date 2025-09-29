@@ -5,7 +5,9 @@ export async function listAccessPermissions() {
   try {
     return prisma.accessPermission.findMany({
       where: { isDeleted: false },
-      include: {
+      select: {
+        id: true,
+        accessKey: true,
         role: {
           select: {
             id: true,
@@ -19,7 +21,7 @@ export async function listAccessPermissions() {
     if (err instanceof ResponseError) throw err;
     throw new ResponseError(
       500,
-      `Failed to list access permissions: ${err.message}`
+      `Failed to list access permissions: Server error`
     );
   }
 }
@@ -27,26 +29,24 @@ export async function listAccessPermissions() {
 export async function getAccessPermissionById(id) {
   try {
     const permission = await prisma.accessPermission.findUnique({
-      where: { id, isDeleted: false },
-      include: {
-        role: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
+      where: { id: id, isDeleted: false },
+      select: {
+        id: true,
+        accessKey: true,
+        role: true,
       },
     });
-    if (!permission)
+
+    if (!permission) {
       throw new ResponseError(404, "Access permission not found");
+    }
+
     return permission;
   } catch (err) {
     if (err instanceof ResponseError) throw err;
-    if (err.code === "P2025")
-      throw new ResponseError(404, "Access permission not found");
     throw new ResponseError(
       500,
-      `Failed to get access permission: ${err.message}`
+      `Failed to get access permission: Server error`
     );
   }
 }

@@ -1,7 +1,7 @@
 import { app } from "./application/app.js";
 import { logger } from "./application/logging.js";
 import dotenv from "dotenv";
-    
+
 dotenv.config({ path: `.env.${process.env.NODE_ENV}` });
 
 const PORT = process.env.PORT;

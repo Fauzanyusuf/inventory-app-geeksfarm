@@ -6,14 +6,16 @@ import { createAuditLog } from "../utils/audit-utils.js";
 
 export async function addImageToUser(userId, fileInfo, actorUserId = null) {
   try {
+    if (!fileInfo) {
+      throw new ResponseError(400, "No file provided");
+    }
+
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
-      // Cleanup uploaded file if user not found
       await deleteFile(fileInfo.filename);
       throw new ResponseError(404, "User not found");
     }
 
-    // Check if user is deleted
     if (user.isDeleted) {
       // Cleanup uploaded file if user is deleted
       await deleteFile(fileInfo.filename);

@@ -7,7 +7,12 @@ import { uploadsDir } from "../config/uploads.js";
 import { winstonMorgan } from "./logging.js";
 
 export const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin: ["http://localhost:5173"],
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(cookieParser());
 app.use(winstonMorgan);

@@ -7,37 +7,6 @@ servers:
   - url: http://localhost:4000/api
     description: Development server
 
-# ========================================================================================
-# API ORGANIZATION GUIDELINES
-# ========================================================================================
-#
-# This OpenAPI specification follows a structured organization for better maintainability:
-#
-# 1. ENDPOINT ORDERING PRINCIPLES:
-#    - Authentication endpoints come FIRST (foundational for API access)
-#    - Resource endpoints follow ALPHABETICAL order for easy discovery
-#    - Current alphabetical order: access-permissions, audit-logs, categories, products, roles, stock-movements, users
-#
-# 2. CRUD OPERATION ORDER (for each resource):
-#    - GET /{resource}          - List/Collection endpoint
-#    - POST /{resource}         - Create new resource (if applicable)
-#    - GET /{resource}/{id}     - Get single resource by ID
-#    - PUT/PATCH /{resource}/{id} - Update resource (if applicable)
-#    - DELETE /{resource}/{id}  - Delete resource (if applicable)
-#
-# 3. NESTED/SUB-RESOURCE ENDPOINTS:
-#    - Always placed AFTER the main CRUD operations for the parent resource
-#    - Examples: /{resource}/{id}/images, /{resource}/{id}/batches
-#
-# 4. MAINTENANCE TIPS:
-#    - When adding new resources: Insert in alphabetical position
-#    - When adding new endpoints: Follow CRUD order within resource section
-#    - Use consistent parameter naming and response schemas
-#    - Keep related endpoints grouped together with clear section comments
-#    - Update this header comment when organization changes
-#
-# ========================================================================================
-
 components:
   securitySchemes:
     bearerAuth:

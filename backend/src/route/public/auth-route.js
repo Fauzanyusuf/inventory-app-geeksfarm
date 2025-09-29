@@ -7,6 +7,5 @@ const router = express.Router();
 router.post("/register", uploadSingle("image"), authController.register);
 router.post("/login", authController.login);
 router.post("/refresh", authController.refresh);
-router.post("/logout", authController.logout);
 
 export default router;

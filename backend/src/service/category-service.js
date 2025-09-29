@@ -1,17 +1,38 @@
 import { prisma } from "../application/database.js";
 import { ResponseError } from "../utils/response-error.js";
 import { replaceOneToOneImage, deleteImage } from "./image-service.js";
-import { deleteFile } from "../utils/image-utils.js";
+import { cleanupFilesOnError, deleteFile } from "../utils/image-utils.js";
 import { logger } from "../application/logging.js";
 import { createAuditLog } from "../utils/audit-utils.js";
 
-export async function create(data, userId = null, file = null) {
+export async function createCategory(data, file = null, userId = null) {
   try {
-    const result = await prisma.category.create({
-      data: {
-        ...data,
-        isDeleted: false,
-      },
+    const existing = await prisma.category.findFirst({
+      where: { name: data.name },
+    });
+
+    if (existing) {
+      throw new ResponseError(409, "Category name already exists");
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const category = await tx.category.create({
+        data,
+        select: {
+          id: true,
+          name: true,
+          description: true,
+        },
+      });
+
+      await createAuditLog(tx, {
+        action: "CREATE",
+        entity: "Category",
+        entityId: category.id,
+        newValues: category,
+        userId,
+      });
+      return category;
     });
 
     let imageResult = null;
@@ -24,37 +45,16 @@ export async function create(data, userId = null, file = null) {
       );
     }
 
-    // Audit logging
-    if (userId) {
-      await createAuditLog(prisma, {
-        userId,
-        action: "CREATE",
-        entity: "Category",
-        entityId: result.id,
-        oldValues: null,
-        newValues: { ...result, imageId: imageResult?.image?.id },
-      });
-    }
-
-    logger.info("Category created:", result.id, "with image:", !!imageResult);
-
-    return {
-      category: {
-        id: result.id,
-        name: result.name,
-        description: result.description,
-        createdAt: result.createdAt,
-        imageId: imageResult?.image?.id,
-      },
-      image: imageResult?.image,
-    };
-  } catch (error) {
-    logger.error("Category creation error:", error);
-    throw new ResponseError(500, "Failed to create category");
+    return { category: result, image: imageResult?.image ?? null };
+  } catch (err) {
+    logger.error("Category creation error:", err);
+    if (file) await cleanupFilesOnError([file]);
+    if (err instanceof ResponseError) throw err;
+    throw new ResponseError(500, "Failed to create category: Server error");
   }
 }
 
-export async function list({ page = 1, limit = 10, search }) {
+export async function listCategories({ page = 1, limit = 10, search }) {
   try {
     const skip = (page - 1) * limit;
     const where = { isDeleted: false };
@@ -68,7 +68,7 @@ export async function list({ page = 1, limit = 10, search }) {
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: "desc" },
+        orderBy: { name: "asc" },
         select: {
           id: true,
           name: true,
@@ -83,8 +83,6 @@ export async function list({ page = 1, limit = 10, search }) {
 
     const totalPages = Math.ceil(total / limit) || 1;
 
-    logger.info("Categories retrieved:", { count: categories.length, total });
-
     return { data: categories, meta: { total, page, limit, totalPages } };
   } catch (error) {
     logger.error("Category list error:", error);
@@ -92,13 +90,11 @@ export async function list({ page = 1, limit = 10, search }) {
   }
 }
 
-export async function getById(id) {
+export async function getCategoryById(id) {
   try {
     const result = await prisma.category.findUnique({
       where: { id, isDeleted: false },
       omit: {
-        createdAt: true,
-        updatedAt: true,
         isDeleted: true,
         imageId: true,
       },
@@ -126,7 +122,7 @@ export async function getById(id) {
   }
 }
 
-export async function update(id, data, userId = null) {
+export async function updateCategory(id, data, userId = null) {
   try {
     const oldRecord = await prisma.category.findUnique({
       where: { id, isDeleted: false },
@@ -143,6 +139,7 @@ export async function update(id, data, userId = null) {
           ...data,
           updatedAt: new Date(),
         },
+        omit: { isDeleted: true },
       });
 
       if (userId) {
@@ -168,7 +165,7 @@ export async function update(id, data, userId = null) {
   }
 }
 
-export async function remove(id, userId = null) {
+export async function deleteCategory(id, userId = null) {
   try {
     const oldRecord = await prisma.category.findUnique({
       where: { id, isDeleted: false },
@@ -209,66 +206,62 @@ export async function remove(id, userId = null) {
   }
 }
 
-export async function uploadImage(id, fileInfo, userId = null) {
-  if (!fileInfo) {
-    throw new ResponseError(400, "No file provided");
+export async function uploadCategoryImage(id, fileInfo, userId = null) {
+  try {
+    const category = await prisma.category.findUnique({
+      where: { id, isDeleted: false },
+      select: { id: true },
+    });
+
+    if (!category) {
+      await deleteFile(fileInfo.filename);
+      throw new ResponseError(404, "Category not found");
+    }
+
+    const result = await replaceOneToOneImage(
+      "category",
+      id,
+      fileInfo,
+      userId,
+      {
+        imageField: "imageId",
+      }
+    );
+
+    return result.image;
+  } catch (err) {
+    if (err instanceof ResponseError) throw err;
+    throw new ResponseError(
+      500,
+      `Failed to upload category image: ${err.message}`
+    );
   }
-
-  // Check if category exists and is not deleted
-  const category = await prisma.category.findUnique({
-    where: { id },
-    select: { id: true, isDeleted: true },
-  });
-
-  if (!category) {
-    await deleteFile(fileInfo.filename);
-    throw new ResponseError(404, "Category not found");
-  }
-
-  if (category.isDeleted) {
-    await deleteFile(fileInfo.filename);
-    throw new ResponseError(410, "Cannot upload image to deleted category");
-  }
-
-  const result = await replaceOneToOneImage("category", id, fileInfo, userId, {
-    imageField: "imageId",
-  });
-
-  return result.image; // Return single image object
 }
 
 export async function getCategoryImage(categoryId) {
   try {
-    const category = await prisma.category.findUnique({
+    const result = await prisma.category.findUnique({
       where: { id: categoryId, isDeleted: false },
-      select: { id: true, name: true, imageId: true },
+      select: {
+        id: true,
+        name: true,
+        image: {
+          select: { id: true, url: true, thumbnailUrl: true, altText: true },
+        },
+      },
     });
 
-    if (!category) {
+    if (!result) {
       throw new ResponseError(404, "Category not found");
     }
 
-    if (!category.imageId) {
+    if (!result.image) {
       throw new ResponseError(404, "Category has no image");
-    }
-
-    const image = await prisma.image.findUnique({
-      where: { id: category.imageId },
-    });
-
-    if (!image) {
-      throw new ResponseError(404, "Image not found");
     }
 
     logger.info(`Retrieved image for category: ${categoryId}`);
 
-    return {
-      id: image.id,
-      url: image.url,
-      thumbnailUrl: image.thumbnailUrl,
-      altText: image.altText,
-      createdAt: image.createdAt,
-    };
+    return result;
   } catch (err) {
     if (err instanceof ResponseError) throw err;
     logger.error(
@@ -285,7 +278,7 @@ export async function deleteCategoryImage(categoryId, userId = null) {
   try {
     const category = await prisma.category.findUnique({
       where: { id: categoryId, isDeleted: false },
-      select: { id: true, name: true, imageId: true },
+      select: { imageId: true },
     });
 
     if (!category) {
@@ -317,12 +310,12 @@ export async function deleteCategoryImage(categoryId, userId = null) {
 }
 
 export default {
-  create,
-  list,
-  getById,
-  update,
-  remove,
-  uploadImage,
+  createCategory,
+  listCategories,
+  getCategoryById,
+  updateCategory,
+  deleteCategory,
+  uploadCategoryImage,
   getCategoryImage,
   deleteCategoryImage,
 };

@@ -5,23 +5,28 @@ import {
 } from "../validation/auth-validation.js";
 import authService from "../service/auth-service.js";
 import { logger } from "../application/logging.js";
-import { cleanupFilesOnError } from "../utils/image-utils.js";
+import { validateImageFile } from "../utils/image-utils.js";
 
 export async function register(req, res, next) {
   try {
     const data = validate(registerUserSchema, req.body);
-    const result = await authService.register(data, req.file || null);
 
-    logger.info(`New user registered: ${result.user.email}, image: ${req.file ? "yes" : "no"}`);
+    let file = null;
+    if (req.file) {
+      file = validateImageFile(req.file);
+    }
+
+    const result = await authService.register(data, file || null);
+
+    logger.info(
+      `New user registered: ${result.user.email}, image: ${file ? "yes" : "no"}`
+    );
 
     res.status(201).json({
-      data: result,
+      data: { ...result.user, image: result.image },
       message: "User registered. Awaiting admin approval.",
     });
   } catch (err) {
-    if (req.file) {
-      await cleanupFilesOnError([req.file], logger);
-    }
     next(err);
   }
 }

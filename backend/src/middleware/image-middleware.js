@@ -50,7 +50,6 @@ function wrapMulter(handler) {
 
         return next(new ResponseError(400, message));
       } else {
-        // No error occurred, continue to next middleware
         next();
       }
     });

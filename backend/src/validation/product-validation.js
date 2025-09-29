@@ -2,7 +2,10 @@ import { z } from "zod";
 
 export const productUpdateSchema = z.object({
   name: z.string().min(1).optional(),
-  barcode: z.string().transform((val) => (val === "" ? undefined : val)).optional(),
+  barcode: z
+    .string()
+    .transform((val) => (val === "" ? undefined : val))
+    .optional(),
   description: z.string().optional(),
   unit: z.string().optional(),
   sellingPrice: z.coerce.number().int().min(0).optional(),

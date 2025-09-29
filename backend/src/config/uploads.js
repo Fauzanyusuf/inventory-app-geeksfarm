@@ -1,8 +1,9 @@
 import path from "path";
-import fs from "fs";
+import fs from "fs/promises";
 
 const cwd = process.cwd();
-export const uploadsDir = path.resolve(cwd, "uploads");
-export const uploadsUrlPrefix = "/uploads";
 
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+export const uploadsDir = path.join(cwd, "uploads");
+export const uploadsUrlPrefix = "/uploads";
+export const uploadsBaseUrl = process.env.APP_BASE_URL;
+await fs.mkdir(uploadsDir, { recursive: true });

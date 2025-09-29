@@ -6,13 +6,14 @@ import stockMovementRoute from "./stock-movement-route.js";
 import salesRoute from "./sales-route.js";
 import auditLogRoute from "./audit-log-route.js";
 import roleRoute from "./role-route.js";
+import authRoute from "./auth-route.js";
 import accessPermissionRoute from "./access-permission-route.js";
 import authMiddleware from "../../middleware/auth-middleware.js";
 
 const router = express.Router();
-
 router.use(authMiddleware);
 
+router.use("/auth", authRoute);
 router.use("/products", productRoute);
 router.use("/categories", categoryRoute);
 router.use("/users", userRoute);

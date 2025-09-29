@@ -3,33 +3,15 @@ import fs from "fs/promises";
 import { prisma } from "../application/database.js";
 import { uploadsDir } from "../config/uploads.js";
 import { logger } from "../application/logging.js";
-import { generateImageUrl, deleteFile } from "../utils/image-utils.js";
+import {
+  generateImageUrl,
+  deleteFile,
+  extractFilename,
+} from "../utils/image-utils.js";
 import { createAuditLog } from "../utils/audit-utils.js";
+import { ResponseError } from "../utils/response-error.js";
 
-export async function processAndCreateImage(
-  fileInfo,
-  actorUserId = null,
-  options = {},
-  tx = null
-) {
-  const processed = await processFile(fileInfo);
-
-  const imageData = {
-    url: processed.url,
-    thumbnailUrl: processed.thumbnailUrl || null,
-    altText: fileInfo.originalname || null,
-  };
-
-  if (options.productId) {
-    imageData.productId = options.productId;
-  }
-
-  const image = await createImageRecord(tx, imageData, actorUserId);
-
-  return { image };
-}
-
-export async function processFile(fileInfo) {
+async function processFile(fileInfo) {
   const imageUrl = generateImageUrl(fileInfo.filename);
   let thumbUrl = null;
 
@@ -77,6 +59,39 @@ export async function processFile(fileInfo) {
   return { url: imageUrl, thumbnailUrl: thumbUrl };
 }
 
+async function createImageRecord(tx, imageData, actorUserId = null) {
+  if (tx && tx.image && tx.auditLog) {
+    // Jika tx diberikan, gunakan dalam tx yang ada
+    const image = await tx.image.create({
+      data: imageData,
+      omit: { productId: true },
+    });
+    await createAuditLog(tx, {
+      action: "CREATE",
+      entity: "Image",
+      entityId: image.id,
+      newValues: image,
+      userId: actorUserId || null,
+    });
+    return image;
+  } else {
+    return await prisma.$transaction(async (prismaTx) => {
+      const image = await prismaTx.image.create({
+        data: imageData,
+        omit: { productId: true },
+      });
+      await createAuditLog(prismaTx, {
+        action: "CREATE",
+        entity: "Image",
+        entityId: image.id,
+        newValues: image,
+        userId: actorUserId || null,
+      });
+      return image;
+    });
+  }
+}
+
 export async function replaceOneToOneImage(
   ownerType,
   ownerId,
@@ -91,7 +106,7 @@ export async function replaceOneToOneImage(
 
     if (ownerType === "user") {
       ownerExisting = await tx.user.findUnique({ where: { id: ownerId } });
-      if (!ownerExisting) throw new Error("User not found");
+      if (!ownerExisting) throw new ResponseError(404, "User not found");
       if (ownerExisting.imageId) {
         prevImage = await tx.image.findUnique({
           where: { id: ownerExisting.imageId },
@@ -99,7 +114,7 @@ export async function replaceOneToOneImage(
       }
     } else if (ownerType === "category") {
       ownerExisting = await tx.category.findUnique({ where: { id: ownerId } });
-      if (!ownerExisting) throw new Error("Category not found");
+      if (!ownerExisting) throw new ResponseError(404, "Category not found");
       if (ownerExisting.imageId) {
         prevImage = await tx.image.findUnique({
           where: { id: ownerExisting.imageId },
@@ -107,10 +122,10 @@ export async function replaceOneToOneImage(
       }
     } else if (ownerType === "product") {
       ownerExisting = await tx.product.findUnique({ where: { id: ownerId } });
-      if (!ownerExisting) throw new Error("Product not found");
+      if (!ownerExisting) throw new ResponseError(404, "Product not found");
       prevImage = await tx.image.findFirst({ where: { productId: ownerId } });
     } else {
-      throw new Error("Unsupported ownerType");
+      throw new ResponseError(400, "Unsupported ownerType");
     }
 
     const imageData = {
@@ -172,27 +187,31 @@ export async function replaceOneToOneImage(
     const prev = txResult.prevImage;
     try {
       if (prev.url) {
-        const prevFilename = prev.url.replace(/^\/uploads\//, "");
-        const success = await deleteFile(prevFilename);
-        if (!success) {
-          fileCleanup.success = false;
-          fileCleanup.errors.push({
-            file: prevFilename,
-            error: "Delete failed",
-          });
-          logger.warn(`Failed to delete previous image file ${prevFilename}`);
+        const prevFilename = extractFilename(prev.url);
+        if (prevFilename) {
+          const success = await deleteFile(prevFilename);
+          if (!success) {
+            fileCleanup.success = false;
+            fileCleanup.errors.push({
+              file: prevFilename,
+              error: "Delete failed",
+            });
+            logger.warn(`Failed to delete previous image file ${prevFilename}`);
+          }
         }
       }
       if (prev.thumbnailUrl) {
-        const thumbFilename = prev.thumbnailUrl.replace(/^\/uploads\//, "");
-        const success = await deleteFile(thumbFilename);
-        if (!success) {
-          fileCleanup.success = false;
-          fileCleanup.errors.push({
-            file: thumbFilename,
-            error: "Delete failed",
-          });
-          logger.warn(`Failed to delete previous thumbnail ${thumbFilename}`);
+        const thumbFilename = extractFilename(prev.thumbnailUrl);
+        if (thumbFilename) {
+          const success = await deleteFile(thumbFilename);
+          if (!success) {
+            fileCleanup.success = false;
+            fileCleanup.errors.push({
+              file: thumbFilename,
+              error: "Delete failed",
+            });
+            logger.warn(`Failed to delete previous thumbnail ${thumbFilename}`);
+          }
         }
       }
     } catch (err) {
@@ -209,9 +228,6 @@ export async function replaceOneToOneImage(
       thumbnailUrl: txResult.image.thumbnailUrl,
       altText: txResult.image.altText,
       createdAt: txResult.image.createdAt,
-      ...(ownerType === "user" && { userId: ownerId }),
-      ...(ownerType === "category" && { categoryId: ownerId }),
-      ...(ownerType === "product" && { productId: ownerId }),
     },
     prevImage: txResult.prevImage,
     owner: txResult.updatedOwner,
@@ -219,32 +235,27 @@ export async function replaceOneToOneImage(
   };
 }
 
-export async function createImageRecord(tx, imageData, actorUserId = null) {
-  if (tx && tx.image && tx.auditLog) {
-    // Jika tx diberikan, gunakan dalam tx yang ada
-    const image = await tx.image.create({ data: imageData });
-    await createAuditLog(tx, {
-      action: "CREATE",
-      entity: "Image",
-      entityId: image.id,
-      newValues: image,
-      userId: actorUserId || null,
-    });
-    return image;
-  } else {
-    // Jika tidak ada tx, buat transaction baru
-    return await prisma.$transaction(async (prismaTx) => {
-      const image = await prismaTx.image.create({ data: imageData });
-      await createAuditLog(prismaTx, {
-        action: "CREATE",
-        entity: "Image",
-        entityId: image.id,
-        newValues: image,
-        userId: actorUserId || null,
-      });
-      return image;
-    });
+async function processAndCreateImage(
+  fileInfo,
+  actorUserId = null,
+  options = {},
+  tx = null
+) {
+  const processed = await processFile(fileInfo);
+
+  const imageData = {
+    url: processed.url,
+    thumbnailUrl: processed.thumbnailUrl || null,
+    altText: fileInfo.originalname || null,
+  };
+
+  if (options.productId) {
+    imageData.productId = options.productId;
   }
+
+  const image = await createImageRecord(tx, imageData, actorUserId);
+
+  return { image };
 }
 
 export async function processAndCreateImages(
@@ -253,7 +264,8 @@ export async function processAndCreateImages(
   options = {},
   tx = null
 ) {
-  if (!Array.isArray(filesInfo)) throw new Error("filesInfo must be an array");
+  if (!Array.isArray(filesInfo))
+    throw new ResponseError(400, "filesInfo must be an array");
 
   const results = [];
   for (const fileInfo of filesInfo) {
@@ -269,45 +281,6 @@ export async function processAndCreateImages(
   return results;
 }
 
-export async function getImageById(id) {
-  try {
-    const image = await prisma.image.findUnique({
-      where: { id },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        product: {
-          select: {
-            id: true,
-            name: true,
-            barcode: true,
-          },
-        },
-        category: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-    });
-
-    if (!image) {
-      throw new Error("Image not found");
-    }
-
-    return image;
-  } catch (error) {
-    logger.error("Get image by ID error:", error);
-    throw error;
-  }
-}
-
 export async function deleteImage(id, userId = null) {
   try {
     const image = await prisma.image.findUnique({
@@ -315,40 +288,42 @@ export async function deleteImage(id, userId = null) {
     });
 
     if (!image) {
-      throw new Error("Image not found");
+      throw new ResponseError(404, "Image not found");
     }
 
-    // Delete from database
     await prisma.image.delete({
       where: { id },
     });
 
-    // Delete physical files
     const fileCleanup = { success: true, errors: [] };
 
     try {
-      if (image.url && image.url.startsWith("/uploads/")) {
-        const filename = image.url.replace(/^\/uploads\//, "");
-        const success = await deleteFile(filename);
-        if (!success) {
-          fileCleanup.success = false;
-          fileCleanup.errors.push({
-            file: filename,
-            error: "Delete failed",
-          });
-          logger.warn(`Failed to delete image file ${filename}`);
+      if (image.url) {
+        const filename = extractFilename(image.url);
+        if (filename) {
+          const success = await deleteFile(filename);
+          if (!success) {
+            fileCleanup.success = false;
+            fileCleanup.errors.push({
+              file: filename,
+              error: "Delete failed",
+            });
+            logger.warn(`Failed to delete image file ${filename}`);
+          }
         }
       }
-      if (image.thumbnailUrl && image.thumbnailUrl.startsWith("/uploads/")) {
-        const thumbFilename = image.thumbnailUrl.replace(/^\/uploads\//, "");
-        const success = await deleteFile(thumbFilename);
-        if (!success) {
-          fileCleanup.success = false;
-          fileCleanup.errors.push({
-            file: thumbFilename,
-            error: "Delete failed",
-          });
-          logger.warn(`Failed to delete thumbnail ${thumbFilename}`);
+      if (image.thumbnailUrl) {
+        const thumbFilename = extractFilename(image.thumbnailUrl);
+        if (thumbFilename) {
+          const success = await deleteFile(thumbFilename);
+          if (!success) {
+            fileCleanup.success = false;
+            fileCleanup.errors.push({
+              file: thumbFilename,
+              error: "Delete failed",
+            });
+            logger.warn(`Failed to delete thumbnail ${thumbFilename}`);
+          }
         }
       }
     } catch (fileError) {
@@ -359,7 +334,6 @@ export async function deleteImage(id, userId = null) {
       });
     }
 
-    // Audit log
     if (userId) {
       await createAuditLog(prisma, {
         action: "DELETE",

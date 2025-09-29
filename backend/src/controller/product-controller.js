@@ -26,7 +26,7 @@ export async function listProducts(req, res, next) {
   } catch (err) {
     next(err);
   }
-} // ✅
+}
 
 export async function getProductById(req, res, next) {
   try {
@@ -86,9 +86,6 @@ export async function createProduct(req, res, next) {
       });
     }
   } catch (err) {
-    if (req.files && req.files.length > 0) {
-      await cleanupFilesOnError(req.files, logger);
-    }
     next(err);
   }
 }
@@ -123,7 +120,7 @@ export async function uploadProductImages(req, res, next) {
     return res.status(201).json({ data: result, message: "Images uploaded" });
   } catch (err) {
     if (req.files && req.files.length > 0) {
-      await cleanupFilesOnError(req.files, logger);
+      await cleanupFilesOnError(req.files);
     }
     next(err);
   }
@@ -161,9 +158,6 @@ export async function updateProductImages(req, res, next) {
       message: "Product images updated",
     });
   } catch (err) {
-    if (req.files && req.files.length > 0) {
-      await cleanupFilesOnError(req.files, logger);
-    }
     next(err);
   }
 }

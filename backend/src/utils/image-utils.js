@@ -2,10 +2,13 @@ import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
 import { ResponseError } from "../utils/response-error.js";
-import { uploadsDir, uploadsUrlPrefix } from "../config/uploads.js";
+import {
+  uploadsBaseUrl,
+  uploadsDir,
+  uploadsUrlPrefix,
+} from "../config/uploads.js";
 import { logger } from "../application/logging.js";
 
-export const MAX_FILE_SIZE = 5 * 1024 * 1024;
 export const IMAGE_MIME_TYPES = new Set([
   "image/jpeg",
   "image/png",
@@ -15,6 +18,8 @@ export const IMAGE_MIME_TYPES = new Set([
 ]);
 
 export function validateImageFile(file) {
+  const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
   if (!file) {
     throw new ResponseError(400, "No file uploaded");
   }
@@ -32,6 +37,8 @@ export function validateImageFile(file) {
       "Only image files are allowed (JPEG, PNG, WebP, GIF, SVG)"
     );
   }
+
+  return file;
 }
 
 export function generateUniqueFilename(originalFilename) {
@@ -42,15 +49,27 @@ export function generateUniqueFilename(originalFilename) {
 }
 
 export function generateImageUrl(filename) {
-  return `${uploadsUrlPrefix}/${filename}`;
+  if (!uploadsBaseUrl) return `${uploadsUrlPrefix}/${filename}`;
+  return `${uploadsBaseUrl.replace(/\/+$/, "")}${uploadsUrlPrefix}/${filename}`;
+}
+
+export function extractFilename(urlOrPath) {
+  if (!urlOrPath) return null;
+  try {
+    return path.basename(String(urlOrPath));
+  } catch {
+    return null;
+  }
 }
 
 export async function deleteFile(filename) {
   if (!filename) return true;
-
   try {
-    const filePath = path.join(uploadsDir, filename);
-    await fs.unlink(filePath);
+    const name = path.basename(filename);
+    const filePath = path.join(uploadsDir, name);
+
+    await fs.rm(filePath, { force: true });
+
     return true;
   } catch (error) {
     logger.warn(`Failed to delete file ${filename}:`, error.message);
@@ -75,7 +94,7 @@ export async function deleteFiles(filenames) {
   return { success, failed };
 }
 
-export async function cleanupFilesOnError(files, logger) {
+export async function cleanupFilesOnError(files) {
   if (!Array.isArray(files) || files.length === 0) {
     return { success: 0, failed: 0 };
   }
@@ -110,9 +129,9 @@ export default {
   validateImageFile,
   generateUniqueFilename,
   generateImageUrl,
+  extractFilename,
   deleteFile,
   deleteFiles,
   cleanupFilesOnError,
-  MAX_FILE_SIZE,
   IMAGE_MIME_TYPES,
 };

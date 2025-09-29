@@ -36,24 +36,24 @@ export async function listAuditLogs({
         where.createdAt.lte = new Date(endDate);
       }
     }
-
     const [auditLogs, total] = await Promise.all([
       prisma.auditLog.findMany({
         where,
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
         skip,
         take: limit,
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          action: true,
+          entity: true,
+          entityId: true,
+          oldValues: true,
+          newValues: true,
+          user: {
+            select: { id: true, name: true },
+          },
+          createdAt: true,
+        },
       }),
       prisma.auditLog.count({ where }),
     ]);

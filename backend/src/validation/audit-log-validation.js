@@ -8,8 +8,8 @@ export const auditLogQuerySchema = z.object({
     .enum(["CREATE", "UPDATE", "DELETE", "LOGIN", "LOGOUT", "OTHER"])
     .optional(),
   userId: z.uuid().optional(),
-  startDate: z.iso.datetime().optional(),
-  endDate: z.iso.datetime().optional(),
+  startDate: z.iso.date().optional(),
+  endDate: z.iso.date().optional(),
 });
 
 export default {
