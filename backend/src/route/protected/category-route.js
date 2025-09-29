@@ -14,7 +14,7 @@ router.get(
 router.get(
   "/:id",
   rbacMiddleware(["product:read"]),
-  categoryController.getCategory
+  categoryController.getCategoryById
 );
 
 router.post(

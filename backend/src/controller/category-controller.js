@@ -54,7 +54,7 @@ async function listCategories(req, res, next) {
   }
 }
 
-async function getCategory(req, res, next) {
+async function getCategoryById(req, res, next) {
   try {
     const id = req.params.id;
     const category = await categoryService.getCategoryById(id);
@@ -157,7 +157,7 @@ async function deleteCategoryImage(req, res, next) {
 export default {
   createCategory,
   listCategories,
-  getCategory,
+  getCategoryById,
   updateCategory,
   deleteCategory,
   uploadCategoryImage,

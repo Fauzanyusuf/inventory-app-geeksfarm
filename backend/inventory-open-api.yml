@@ -482,6 +482,20 @@ components:
         message:
           type: string
 
+    ProductCreateResult:
+      type: object
+      properties:
+        product:
+          $ref: "#/components/schemas/Product"
+        batch:
+          $ref: "#/components/schemas/ProductBatch"
+        movement:
+          $ref: "#/components/schemas/StockMovement"
+        images:
+          type: array
+          items:
+            $ref: "#/components/schemas/Image"
+
     # Category schemas
     Category:
       type: object
@@ -770,6 +784,91 @@ components:
         search:
           type: string
           description: Search query string
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      description: Page number (1-based)
+    LimitParam:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+      description: Page size limit
+    SearchParam:
+      name: search
+      in: query
+      schema:
+        type: string
+      description: Free text search across common fields
+    CategoryParam:
+      name: category
+      in: query
+      schema:
+        type: string
+      description: Filter by category name (case-insensitive substring)
+    MinPriceParam:
+      name: minPrice
+      in: query
+      schema:
+        type: number
+        minimum: 0
+      description: Minimum selling price (inclusive)
+    MaxPriceParam:
+      name: maxPrice
+      in: query
+      schema:
+        type: number
+        minimum: 0
+      description: Maximum selling price (inclusive)
+    SortByParam:
+      name: sortBy
+      in: query
+      schema:
+        type: string
+        enum: [sellingPrice, name]
+      description: Field to sort by
+    SortOrderParam:
+      name: sortOrder
+      in: query
+      schema:
+        type: string
+        enum: [asc, desc]
+        default: asc
+      description: Sort order
+  examples:
+    LoginExample:
+      summary: Example login payload
+      value:
+        email: superadmin@example.com
+        password: superpassword
+    ProductsListExample:
+      summary: Products list response example
+      value:
+        data:
+          - id: "11111111-1111-1111-1111-111111111111"
+            name: "Sample Product"
+            barcode: "SKU123"
+            sellingPrice: 15000
+            unit: pcs
+            category:
+              id: "cuid123"
+              name: "Snacks"
+            images: []
+            totalQuantity: 120
+        meta:
+          total: 1
+          page: 1
+          limit: 10
+          totalPages: 1
+        message: "Products retrieved"
 
 paths:
   # ========================================================================================
@@ -829,13 +928,7 @@ paths:
                 type: object
                 properties:
                   data:
-                    type: object
-                    properties:
-                      user:
-                        $ref: "#/components/schemas/User"
-                      accessToken:
-                        type: string
-                        description: JWT access token
+                    $ref: "#/components/schemas/User"
                   message:
                     type: string
         "400":
@@ -855,6 +948,9 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/LoginRequest"
+            examples:
+              login:
+                $ref: "#/components/examples/LoginExample"
       responses:
         "200":
           description: Login successful
@@ -882,8 +978,14 @@ paths:
     post:
       summary: Refresh access token
       description: Generate new access token using refresh token
-      security:
-        - bearerAuth: []
+      # This endpoint reads the refresh token from an HTTP cookie named `refreshToken`.
+      parameters:
+        - name: refreshToken
+          in: cookie
+          required: true
+          schema:
+            type: string
+          description: Refresh token cookie
       responses:
         "200":
           description: Token refreshed successfully
@@ -902,8 +1004,14 @@ paths:
     post:
       summary: User logout
       description: Invalidate current session
-      security:
-        - bearerAuth: []
+      # Logout reads the refresh token from cookie and clears it
+      parameters:
+        - name: refreshToken
+          in: cookie
+          required: false
+          schema:
+            type: string
+          description: Refresh token cookie to invalidate
       responses:
         "200":
           description: Logout successful
@@ -1002,19 +1110,8 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            default: 1
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 10
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
         - name: userId
           in: query
           schema:
@@ -1031,13 +1128,13 @@ paths:
           schema:
             type: string
             format: date-time
-          description: Filter from start date
+          description: Filter from start date (ISO 8601)
         - name: endDate
           in: query
           schema:
             type: string
             format: date-time
-          description: Filter to end date
+          description: Filter to end date (ISO 8601)
       responses:
         "200":
           description: Audit logs retrieved successfully
@@ -1069,23 +1166,39 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            default: 1
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 10
-        - name: search
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
+        - $ref: "#/components/parameters/SearchParam"
+        - name: category
           in: query
           schema:
             type: string
+          description: Filter by category name (case-insensitive, substring)
+        - name: minPrice
+          in: query
+          schema:
+            type: number
+            minimum: 0
+          description: Minimum selling price (inclusive)
+        - name: maxPrice
+          in: query
+          schema:
+            type: number
+            minimum: 0
+          description: Maximum selling price (inclusive)
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [sellingPrice, name]
+          description: Field to sort by
+        - name: sortOrder
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: asc
+          description: Sort order (ascending or descending)
       responses:
         "200":
           description: Categories retrieved successfully
@@ -1291,7 +1404,7 @@ paths:
                   format: binary
                   description: Category image file
       responses:
-        "200":
+        "201":
           description: Image uploaded successfully
           content:
             application/json:
@@ -1389,23 +1502,14 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            default: 1
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 10
-        - name: search
-          in: query
-          schema:
-            type: string
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
+        - $ref: "#/components/parameters/SearchParam"
+        - $ref: "#/components/parameters/CategoryParam"
+        - $ref: "#/components/parameters/MinPriceParam"
+        - $ref: "#/components/parameters/MaxPriceParam"
+        - $ref: "#/components/parameters/SortByParam"
+        - $ref: "#/components/parameters/SortOrderParam"
       responses:
         "200":
           description: Products retrieved successfully
@@ -1494,10 +1598,10 @@ paths:
                 properties:
                   data:
                     oneOf:
-                      - $ref: "#/components/schemas/Product"
+                      - $ref: "#/components/schemas/ProductCreateResult"
                       - type: array
                         items:
-                          $ref: "#/components/schemas/Product"
+                          $ref: "#/components/schemas/ProductCreateResult"
                   message:
                     type: string
         "400":
@@ -1622,7 +1726,7 @@ paths:
                   maxItems: 5
                   description: Product images (max 5 files)
       responses:
-        "200":
+        "201":
           description: Images uploaded successfully
           content:
             application/json:
@@ -1802,6 +1906,8 @@ paths:
           schema:
             type: string
             format: uuid
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
       responses:
         "200":
           description: Product batches retrieved successfully
@@ -1887,7 +1993,7 @@ paths:
             schema:
               $ref: "#/components/schemas/AddProductStockRequest"
       responses:
-        "200":
+        "201":
           description: Stock added successfully
           content:
             application/json:

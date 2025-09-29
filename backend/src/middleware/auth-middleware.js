@@ -16,38 +16,32 @@ export default async function authMiddleware(req, res, next) {
     const payload = verifyToken(token);
 
     const userId = payload?.sub;
+    const roleId = payload?.roleId;
 
-    if (!userId ) {
+    if (!payload || !userId || !roleId) {
       throw new ResponseError(401, "Invalid token payload");
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
+    const role = await prisma.role.findUnique({
+      where: { id: roleId },
       include: {
-        role: {
-          include: {
-            permissions: {
-              where: {
-                isDeleted: false,
-              },
-            },
+        permissions: {
+          where: {
+            isDeleted: false,
           },
         },
       },
     });
 
-    if (!user || user.isDeleted) {
-      throw new ResponseError(401, "User not found or inactive");
+    if (!role || role.isDeleted) {
+      throw new ResponseError(401, "Role not found or inactive");
     }
 
-    const permissions = user.role?.permissions?.map((p) => p.accessKey) || [];
+    const permissions = role.permissions?.map((p) => p.accessKey) || [];
 
     req.user = {
       sub: userId,
-      email: user.email,
-      name: user.name,
-      roleId: user.roleId,
-      role: user.role ? { id: user.role.id, name: user.role.name } : undefined,
+      role,
       permissions,
     };
 

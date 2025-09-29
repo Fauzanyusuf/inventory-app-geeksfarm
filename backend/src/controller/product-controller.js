@@ -5,6 +5,7 @@ import {
   productUpdateSchema,
   updateProductBatchValidation,
   addProductStockValidation,
+  productListQuerySchema,
 } from "../validation/product-validation.js";
 import { ResponseError } from "../utils/response-error.js";
 import productService from "../service/product-service.js";
@@ -12,11 +13,11 @@ import { logger } from "../application/logging.js";
 import { cleanupFilesOnError } from "../utils/image-utils.js";
 import { paginationQuerySchema } from "../validation/query-validation.js";
 
- async function listProducts(req, res, next) {
+async function listProducts(req, res, next) {
   try {
-    const { page, limit, search } = validate(paginationQuerySchema, req.query);
+    const query = validate(productListQuerySchema, req.query);
 
-    const result = await productService.listProducts({ page, limit, search });
+    const result = await productService.listProducts(query);
 
     return res.status(200).json({
       data: result.items,
@@ -28,7 +29,7 @@ import { paginationQuerySchema } from "../validation/query-validation.js";
   }
 }
 
- async function getProductById(req, res, next) {
+async function getProductById(req, res, next) {
   try {
     const productId = validate(productIdParamSchema, req.params.id);
 
@@ -43,7 +44,7 @@ import { paginationQuerySchema } from "../validation/query-validation.js";
   }
 }
 
- async function createProduct(req, res, next) {
+async function createProduct(req, res, next) {
   try {
     const data = validate(productBulkCreateSchema, req.body);
 
@@ -90,7 +91,7 @@ import { paginationQuerySchema } from "../validation/query-validation.js";
   }
 }
 
- async function updateProduct(req, res, next) {
+async function updateProduct(req, res, next) {
   try {
     const productId = req.params.id;
     const data = validate(productUpdateSchema, req.body);
@@ -105,7 +106,7 @@ import { paginationQuerySchema } from "../validation/query-validation.js";
   }
 }
 
- async function uploadProductImages(req, res, next) {
+async function uploadProductImages(req, res, next) {
   try {
     const productId = req.params.id;
     if (!req.files || req.files.length === 0) {
@@ -126,7 +127,7 @@ import { paginationQuerySchema } from "../validation/query-validation.js";
   }
 }
 
- async function getProductImages(req, res, next) {
+async function getProductImages(req, res, next) {
   try {
     const productId = validate(productIdParamSchema, req.params.id);
 
@@ -141,7 +142,7 @@ import { paginationQuerySchema } from "../validation/query-validation.js";
   }
 }
 
- async function updateProductImages(req, res, next) {
+async function updateProductImages(req, res, next) {
   try {
     const productId = validate(productIdParamSchema, req.params.id);
     const { removeImageIds } = req.body;
@@ -162,7 +163,7 @@ import { paginationQuerySchema } from "../validation/query-validation.js";
   }
 }
 
- async function deleteProductImage(req, res, next) {
+async function deleteProductImage(req, res, next) {
   try {
     const { productId, imgId } = req.params;
 
@@ -181,16 +182,14 @@ import { paginationQuerySchema } from "../validation/query-validation.js";
   }
 }
 
- async function listProductBatchesByProduct(req, res, next) {
+async function listProductBatchesByProduct(req, res, next) {
   try {
     const productId = req.params.id;
     const { page, limit, search } = validate(paginationQuerySchema, req.query);
-    const sortByExpired = req.query.sortByExpired === "true";
     const result = await productService.listProductBatchesByProduct(productId, {
       page,
       limit,
       search,
-      sortByExpired,
     });
     res.status(200).json({
       data: result.items,
@@ -202,7 +201,7 @@ import { paginationQuerySchema } from "../validation/query-validation.js";
   }
 }
 
- async function updateProductBatch(req, res, next) {
+async function updateProductBatch(req, res, next) {
   try {
     const { productId, batchId } = req.params;
     const data = validate(updateProductBatchValidation, req.body);
@@ -221,7 +220,7 @@ import { paginationQuerySchema } from "../validation/query-validation.js";
   }
 }
 
- async function addProductStock(req, res, next) {
+async function addProductStock(req, res, next) {
   try {
     const productId = req.params.id;
     const data = validate(addProductStockValidation, req.body);
@@ -239,7 +238,7 @@ import { paginationQuerySchema } from "../validation/query-validation.js";
   }
 }
 
- async function deleteProduct(req, res, next) {
+async function deleteProduct(req, res, next) {
   try {
     const productId = validate(productIdParamSchema, req.params.id);
 

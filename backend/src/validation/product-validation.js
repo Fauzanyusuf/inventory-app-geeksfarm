@@ -39,10 +39,10 @@ const productCreateSchema = z
       .int()
       .positive("Cost price must be a valid positive number"),
 
-    categoryId: z
-      .cuid()
-      .transform((val) => (val === "" ? undefined : val))
-      .optional(),
+    categoryId: z.preprocess(
+      (val) => (val === "" ? undefined : val),
+      z.cuid().optional()
+    ),
 
     quantity: z.coerce.number().int().gt(0, "Quantity must be greater than 0"),
     receivedAt: z
@@ -98,8 +98,24 @@ export const addProductStockValidation = z.object({
   note: z.string().optional(),
 });
 
-// Schema untuk bulk create products - bisa array atau single object
 export const productBulkCreateSchema = z.union([
-  z.array(productCreateSchema).min(1).max(50), // Array of products, max 50 untuk efisiensi
-  productCreateSchema, // Single product
+  z.array(productCreateSchema).min(1).max(50),
+  productCreateSchema,
 ]);
+
+export const productListQuerySchema = z.object({
+  page: z.coerce.number().int().positive().min(1).default(1),
+  limit: z.coerce.number().int().positive().min(1).max(100).default(10),
+  search: z.string().trim().optional(),
+  category: z.string().trim().optional(),
+  minPrice: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.coerce.number().nonnegative().optional()
+  ),
+  maxPrice: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.coerce.number().nonnegative().optional()
+  ),
+  sortBy: z.enum(["sellingPrice", "name"]).optional().default("name"),
+  sortOrder: z.enum(["asc", "desc"]).optional().default("asc"),
+});

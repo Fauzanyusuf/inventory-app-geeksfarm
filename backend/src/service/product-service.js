@@ -118,31 +118,67 @@ async function createSingleProduct(
   return { product, batch, movement, images: imagesResult };
 }
 
-async function listProducts({ page = 1, limit = 10, search } = {}) {
+async function listProducts(filters = {}) {
   try {
-    const skip = (page - 1) * limit;
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      category,
+      minPrice,
+      maxPrice,
+      sortBy = "name",
+      sortOrder = "asc",
+    } = filters;
+
     const where = { isDeleted: false };
+    const and = [];
 
     if (search) {
-      where.OR = [
-        { name: { contains: search, mode: "insensitive" } },
-        { barcode: { contains: search, mode: "insensitive" } },
-      ];
+      and.push({
+        OR: [
+          { name: { contains: search, mode: "insensitive" } },
+          { barcode: { contains: search, mode: "insensitive" } },
+        ],
+      });
     }
+
+    if (category) {
+      and.push({
+        category: { name: { contains: category, mode: "insensitive" } },
+      });
+    }
+
+    if (typeof minPrice !== "undefined" || typeof maxPrice !== "undefined") {
+      const priceFilter = {};
+      if (typeof minPrice !== "undefined") priceFilter.gte = minPrice;
+      if (typeof maxPrice !== "undefined") priceFilter.lte = maxPrice;
+      and.push({ sellingPrice: priceFilter });
+    }
+
+    if (and.length) {
+      where.AND = and;
+    }
+
+    const orderBy = {};
+    orderBy[sortBy] = sortOrder;
+
+    const skip = (page - 1) * limit;
+    const take = limit;
 
     const [products, total] = await Promise.all([
       prisma.product.findMany({
         where,
+        orderBy,
         skip,
-        take: limit,
-        orderBy: [{ createdAt: "desc" }, { name: "asc" }],
+        take,
         select: {
           id: true,
           name: true,
           barcode: true,
           description: true,
-          unit: true,
           sellingPrice: true,
+          unit: true,
           category: { select: { id: true, name: true } },
           images: {
             select: { id: true, url: true, thumbnailUrl: true },
@@ -607,18 +643,19 @@ async function deleteProduct(id, userId = null) {
 
 async function listProductBatchesByProduct(
   productId,
-  { page = 1, limit = 10, sortByExpired = true } = {}
+  { page = 1, limit = 10 } = {}
 ) {
   try {
     const skip = (page - 1) * limit;
     const where = { productId };
 
-    const orderBy = sortByExpired
-      ? { expiredAt: "asc" }
-      : { createdAt: "desc" };
+    const orderBy = [
+      { expiredAt: "asc" },
+      { receivedAt: "asc" },
+      { createdAt: "asc" },
+    ];
 
-    const [total, items] = await Promise.all([
-      prisma.productBatch.count({ where }),
+    const [items, total] = await Promise.all([
       prisma.productBatch.findMany({
         where,
         skip,
@@ -628,6 +665,7 @@ async function listProductBatchesByProduct(
           productId: true,
         },
       }),
+      prisma.productBatch.count({ where }),
     ]);
 
     const totalPages = Math.ceil(total / limit) || 1;

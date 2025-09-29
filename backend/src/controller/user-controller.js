@@ -23,9 +23,9 @@ async function listUsers(req, res, next) {
   }
 }
 
-async function getCurrentUser(req, res, next) {
+async function getUserById(req, res, next) {
   try {
-    const userId = req.user.sub;
+    const userId = req.params.id;
     const result = await userService.getUserById(userId);
     res.status(200).json({ data: result, message: "User data retrieved" });
   } catch (err) {
@@ -33,9 +33,9 @@ async function getCurrentUser(req, res, next) {
   }
 }
 
-async function getUserById(req, res, next) {
+async function getCurrentUser(req, res, next) {
   try {
-    const userId = req.params.id;
+    const userId = req.user.sub;
     const result = await userService.getUserById(userId);
     res.status(200).json({ data: result, message: "User data retrieved" });
   } catch (err) {

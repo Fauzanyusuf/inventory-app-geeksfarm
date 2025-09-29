@@ -94,6 +94,10 @@ async function login(request) {
       },
     });
 
+    if (!user) {
+      throw new ResponseError(401, "Invalid email or password");
+    }
+
     const isPasswordValid = await bcrypt.compare(
       request.password,
       user.password
