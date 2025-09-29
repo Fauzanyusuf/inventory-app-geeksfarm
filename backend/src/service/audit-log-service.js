@@ -2,7 +2,7 @@ import { prisma } from "../application/database.js";
 import { ResponseError } from "../utils/response-error.js";
 import { logger } from "../application/logging.js";
 
-export async function listAuditLogs({
+async function listAuditLogs({
   page = 1,
   limit = 10,
   entity,

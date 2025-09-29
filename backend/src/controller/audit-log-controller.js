@@ -3,7 +3,7 @@ import { auditLogQuerySchema } from "../validation/audit-log-validation.js";
 import auditLogService from "../service/audit-log-service.js";
 import { logger } from "../application/logging.js";
 
-export async function listAuditLogs(req, res, next) {
+async function listAuditLogs(req, res, next) {
   try {
     const query = validate(auditLogQuerySchema, req.query);
 

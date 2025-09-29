@@ -18,8 +18,3 @@ export function winstonMorgan(req, res, next) {
 
   next();
 }
-
-export default {
-  logger,
-  winstonMorgan,
-};

@@ -77,23 +77,6 @@ export async function deleteFile(filename) {
   }
 }
 
-export async function deleteFiles(filenames) {
-  if (!Array.isArray(filenames) || filenames.length === 0) {
-    return { success: 0, failed: 0 };
-  }
-
-  const results = await Promise.allSettled(
-    filenames.map((filename) => deleteFile(filename))
-  );
-
-  const success = results.filter(
-    (r) => r.status === "fulfilled" && r.value
-  ).length;
-  const failed = results.length - success;
-
-  return { success, failed };
-}
-
 export async function cleanupFilesOnError(files) {
   if (!Array.isArray(files) || files.length === 0) {
     return { success: 0, failed: 0 };
@@ -124,14 +107,3 @@ export async function cleanupFilesOnError(files) {
 
   return { success, failed };
 }
-
-export default {
-  validateImageFile,
-  generateUniqueFilename,
-  generateImageUrl,
-  extractFilename,
-  deleteFile,
-  deleteFiles,
-  cleanupFilesOnError,
-  IMAGE_MIME_TYPES,
-};

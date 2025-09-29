@@ -7,7 +7,7 @@ import {
 } from "../validation/user-validation.js";
 import { paginationQuerySchema } from "../validation/query-validation.js";
 
-export async function listUsers(req, res, next) {
+async function listUsers(req, res, next) {
   try {
     const { page, limit, search } = validate(paginationQuerySchema, req.query);
 
@@ -23,7 +23,7 @@ export async function listUsers(req, res, next) {
   }
 }
 
-export async function getCurrentUser(req, res, next) {
+async function getCurrentUser(req, res, next) {
   try {
     const userId = req.user.sub;
     const result = await userService.getUserById(userId);
@@ -33,7 +33,7 @@ export async function getCurrentUser(req, res, next) {
   }
 }
 
-export async function getUserById(req, res, next) {
+async function getUserById(req, res, next) {
   try {
     const userId = req.params.id;
     const result = await userService.getUserById(userId);
@@ -43,7 +43,7 @@ export async function getUserById(req, res, next) {
   }
 }
 
-export async function updateCurrentUser(req, res, next) {
+async function updateCurrentUser(req, res, next) {
   try {
     const userId = req.user.sub;
     const data = validate(updateUserSchema, req.body);
@@ -54,7 +54,7 @@ export async function updateCurrentUser(req, res, next) {
   }
 }
 
-export async function uploadUserImage(req, res, next) {
+async function uploadUserImage(req, res, next) {
   try {
     const userId = req.user.sub;
     if (!req.file) throw new ResponseError(400, "No file uploaded");
@@ -69,7 +69,7 @@ export async function uploadUserImage(req, res, next) {
   }
 }
 
-export async function patchApproveUser(req, res, next) {
+async function patchApproveUser(req, res, next) {
   try {
     const targetId = req.params.id;
     const { roleId } = validate(approveUserValidation, req.body);
@@ -90,7 +90,7 @@ export async function patchApproveUser(req, res, next) {
   }
 }
 
-export async function getUserImage(req, res, next) {
+async function getUserImage(req, res, next) {
   try {
     const userId = req.user.sub;
 
@@ -105,7 +105,7 @@ export async function getUserImage(req, res, next) {
   }
 }
 
-export async function deleteUserImage(req, res, next) {
+async function deleteUserImage(req, res, next) {
   try {
     const userId = req.user.sub;
 

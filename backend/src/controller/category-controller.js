@@ -10,7 +10,7 @@ import {
 } from "../utils/image-utils.js";
 import { paginationQuerySchema } from "../validation/query-validation.js";
 
-export async function createCategory(req, res, next) {
+async function createCategory(req, res, next) {
   try {
     const data = validate(categoryCreateSchema, req.body);
 
@@ -34,7 +34,7 @@ export async function createCategory(req, res, next) {
   }
 }
 
-export async function listCategories(req, res, next) {
+async function listCategories(req, res, next) {
   try {
     const { page, limit, search } = validate(paginationQuerySchema, req.query);
 
@@ -54,7 +54,7 @@ export async function listCategories(req, res, next) {
   }
 }
 
-export async function getCategory(req, res, next) {
+async function getCategory(req, res, next) {
   try {
     const id = req.params.id;
     const category = await categoryService.getCategoryById(id);
@@ -67,7 +67,7 @@ export async function getCategory(req, res, next) {
   }
 }
 
-export async function updateCategory(req, res, next) {
+async function updateCategory(req, res, next) {
   try {
     const id = req.params.id;
     const data = validate(categoryUpdateSchema, req.body);
@@ -90,7 +90,7 @@ export async function updateCategory(req, res, next) {
   }
 }
 
-export async function deleteCategory(req, res, next) {
+async function deleteCategory(req, res, next) {
   try {
     const id = req.params.id;
     await categoryService.deleteCategory(id, req.user?.sub || null);
@@ -102,7 +102,7 @@ export async function deleteCategory(req, res, next) {
   }
 }
 
-export async function uploadCategoryImage(req, res, next) {
+async function uploadCategoryImage(req, res, next) {
   try {
     const id = req.params.id;
     const file = validateImageFile(req.file);
@@ -122,7 +122,7 @@ export async function uploadCategoryImage(req, res, next) {
   }
 }
 
-export async function getCategoryImage(req, res, next) {
+async function getCategoryImage(req, res, next) {
   try {
     const categoryId = req.params.id;
 
@@ -137,7 +137,7 @@ export async function getCategoryImage(req, res, next) {
   }
 }
 
-export async function deleteCategoryImage(req, res, next) {
+async function deleteCategoryImage(req, res, next) {
   try {
     const categoryId = req.params.id;
 

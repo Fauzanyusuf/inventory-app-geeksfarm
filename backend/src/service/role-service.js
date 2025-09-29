@@ -1,7 +1,7 @@
 import { prisma } from "../application/database.js";
 import { ResponseError } from "../utils/response-error.js";
 
-export async function listRoles() {
+async function listRoles() {
   try {
     return prisma.role.findMany({
       omit: {
@@ -23,7 +23,7 @@ export async function listRoles() {
   }
 }
 
-export async function getRoleById(id) {
+async function getRoleById(id) {
   try {
     const role = await prisma.role.findUnique({
       where: { id },

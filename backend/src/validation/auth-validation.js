@@ -30,5 +30,3 @@ export const registerUserSchema = z.object({
       message: "Sex must be either MALE or FEMALE",
     }),
 });
-
-export default { loginAuthSchema, registerUserSchema };

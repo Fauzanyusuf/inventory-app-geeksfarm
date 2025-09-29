@@ -7,7 +7,7 @@ import { replaceOneToOneImage } from "./image-service.js";
 import { cleanupFilesOnError, deleteFile } from "../utils/image-utils.js";
 import { createAuditLog } from "../utils/audit-utils.js";
 
-export async function register(request, file = null) {
+async function register(request, file = null) {
   try {
     const whereClause = {
       OR: [
@@ -82,7 +82,7 @@ export async function register(request, file = null) {
   }
 }
 
-export async function login(request) {
+async function login(request) {
   try {
     const user = await prisma.user.findUnique({
       where: { email: request.email, isDeleted: false },
@@ -139,7 +139,7 @@ export async function login(request) {
   }
 }
 
-export async function refresh(token) {
+async function refresh(token) {
   try {
     if (!token) {
       throw new ResponseError(401, "Missing refresh token");
@@ -175,7 +175,7 @@ export async function refresh(token) {
   }
 }
 
-export async function logout(token) {
+async function logout(token) {
   try {
     let revoked = false;
     if (!token) return { revoked };

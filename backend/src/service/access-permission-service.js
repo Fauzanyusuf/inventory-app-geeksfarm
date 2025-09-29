@@ -1,7 +1,7 @@
 import { prisma } from "../application/database.js";
 import { ResponseError } from "../utils/response-error.js";
 
-export async function listAccessPermissions() {
+async function listAccessPermissions() {
   try {
     return prisma.accessPermission.findMany({
       where: { isDeleted: false },
@@ -26,7 +26,7 @@ export async function listAccessPermissions() {
   }
 }
 
-export async function getAccessPermissionById(id) {
+async function getAccessPermissionById(id) {
   try {
     const permission = await prisma.accessPermission.findUnique({
       where: { id: id, isDeleted: false },

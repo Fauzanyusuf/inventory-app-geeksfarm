@@ -12,7 +12,7 @@ import { logger } from "../application/logging.js";
 import { cleanupFilesOnError } from "../utils/image-utils.js";
 import { paginationQuerySchema } from "../validation/query-validation.js";
 
-export async function listProducts(req, res, next) {
+ async function listProducts(req, res, next) {
   try {
     const { page, limit, search } = validate(paginationQuerySchema, req.query);
 
@@ -28,7 +28,7 @@ export async function listProducts(req, res, next) {
   }
 }
 
-export async function getProductById(req, res, next) {
+ async function getProductById(req, res, next) {
   try {
     const productId = validate(productIdParamSchema, req.params.id);
 
@@ -43,7 +43,7 @@ export async function getProductById(req, res, next) {
   }
 }
 
-export async function createProduct(req, res, next) {
+ async function createProduct(req, res, next) {
   try {
     const data = validate(productBulkCreateSchema, req.body);
 
@@ -90,7 +90,7 @@ export async function createProduct(req, res, next) {
   }
 }
 
-export async function updateProduct(req, res, next) {
+ async function updateProduct(req, res, next) {
   try {
     const productId = req.params.id;
     const data = validate(productUpdateSchema, req.body);
@@ -105,7 +105,7 @@ export async function updateProduct(req, res, next) {
   }
 }
 
-export async function uploadProductImages(req, res, next) {
+ async function uploadProductImages(req, res, next) {
   try {
     const productId = req.params.id;
     if (!req.files || req.files.length === 0) {
@@ -126,7 +126,7 @@ export async function uploadProductImages(req, res, next) {
   }
 }
 
-export async function getProductImages(req, res, next) {
+ async function getProductImages(req, res, next) {
   try {
     const productId = validate(productIdParamSchema, req.params.id);
 
@@ -141,7 +141,7 @@ export async function getProductImages(req, res, next) {
   }
 }
 
-export async function updateProductImages(req, res, next) {
+ async function updateProductImages(req, res, next) {
   try {
     const productId = validate(productIdParamSchema, req.params.id);
     const { removeImageIds } = req.body;
@@ -162,7 +162,7 @@ export async function updateProductImages(req, res, next) {
   }
 }
 
-export async function deleteProductImage(req, res, next) {
+ async function deleteProductImage(req, res, next) {
   try {
     const { productId, imgId } = req.params;
 
@@ -181,7 +181,7 @@ export async function deleteProductImage(req, res, next) {
   }
 }
 
-export async function listProductBatchesByProduct(req, res, next) {
+ async function listProductBatchesByProduct(req, res, next) {
   try {
     const productId = req.params.id;
     const { page, limit, search } = validate(paginationQuerySchema, req.query);
@@ -202,7 +202,7 @@ export async function listProductBatchesByProduct(req, res, next) {
   }
 }
 
-export async function updateProductBatch(req, res, next) {
+ async function updateProductBatch(req, res, next) {
   try {
     const { productId, batchId } = req.params;
     const data = validate(updateProductBatchValidation, req.body);
@@ -221,7 +221,7 @@ export async function updateProductBatch(req, res, next) {
   }
 }
 
-export async function addProductStock(req, res, next) {
+ async function addProductStock(req, res, next) {
   try {
     const productId = req.params.id;
     const data = validate(addProductStockValidation, req.body);
@@ -239,7 +239,7 @@ export async function addProductStock(req, res, next) {
   }
 }
 
-export async function deleteProduct(req, res, next) {
+ async function deleteProduct(req, res, next) {
   try {
     const productId = validate(productIdParamSchema, req.params.id);
 

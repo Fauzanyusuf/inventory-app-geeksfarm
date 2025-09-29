@@ -4,7 +4,7 @@ import { replaceOneToOneImage, deleteImage } from "./image-service.js";
 import { deleteFile } from "../utils/image-utils.js";
 import { createAuditLog } from "../utils/audit-utils.js";
 
-export async function addImageToUser(userId, fileInfo, actorUserId = null) {
+async function addImageToUser(userId, fileInfo, actorUserId = null) {
   try {
     if (!fileInfo) {
       throw new ResponseError(400, "No file provided");
@@ -53,7 +53,7 @@ export async function addImageToUser(userId, fileInfo, actorUserId = null) {
   }
 }
 
-export async function getUserById(userId) {
+async function getUserById(userId) {
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -84,7 +84,7 @@ export async function getUserById(userId) {
   }
 }
 
-export async function updateUserById(userId, updateData, actorUserId = null) {
+async function updateUserById(userId, updateData, actorUserId = null) {
   try {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new ResponseError(404, "User not found");
@@ -132,7 +132,7 @@ export async function updateUserById(userId, updateData, actorUserId = null) {
   }
 }
 
-export async function approveUserByAdmin(userId, roleId, approverId) {
+async function approveUserByAdmin(userId, roleId, approverId) {
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -186,7 +186,7 @@ export async function approveUserByAdmin(userId, roleId, approverId) {
   }
 }
 
-export async function getAllUsers({ page = 1, limit = 10, search } = {}) {
+async function getAllUsers({ page = 1, limit = 10, search } = {}) {
   try {
     const skip = (page - 1) * limit;
     const where = { isDeleted: false };
@@ -251,7 +251,7 @@ export async function getAllUsers({ page = 1, limit = 10, search } = {}) {
   }
 }
 
-export async function getUserImage(userId) {
+async function getUserImage(userId) {
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -281,7 +281,7 @@ export async function getUserImage(userId) {
   }
 }
 
-export async function deleteUserImage(userId, actorUserId = null) {
+async function deleteUserImage(userId, actorUserId = null) {
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },

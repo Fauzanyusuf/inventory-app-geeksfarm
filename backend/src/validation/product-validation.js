@@ -13,17 +13,9 @@ export const productUpdateSchema = z.object({
   categoryId: z.cuid().optional(),
 });
 
-export const productBatchCreateSchema = z.object({
-  quantity: z.number().int().gt(0, "Quantity must be greater than 0"),
-  costPrice: z.coerce.number().int().min(0),
-  receivedAt: z.string().optional(),
-  expiredAt: z.string().optional(),
-  status: z.enum(["AVAILABLE", "EXPIRED", "SOLD_OUT"]).optional(),
-});
-
 export const productIdParamSchema = z.uuid();
 
-export const productCreateSchema = z
+const productCreateSchema = z
   .object({
     name: z.string().min(1, "Product name is required"),
     barcode: z
@@ -111,13 +103,3 @@ export const productBulkCreateSchema = z.union([
   z.array(productCreateSchema).min(1).max(50), // Array of products, max 50 untuk efisiensi
   productCreateSchema, // Single product
 ]);
-
-export default {
-  productIdParamSchema,
-  productCreateSchema,
-  productUpdateSchema,
-  productBatchCreateSchema,
-  updateProductBatchValidation,
-  addProductStockValidation,
-  productBulkCreateSchema,
-};

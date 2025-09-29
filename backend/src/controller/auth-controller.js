@@ -7,7 +7,7 @@ import authService from "../service/auth-service.js";
 import { logger } from "../application/logging.js";
 import { validateImageFile } from "../utils/image-utils.js";
 
-export async function register(req, res, next) {
+async function register(req, res, next) {
   try {
     const data = validate(registerUserSchema, req.body);
 
@@ -31,7 +31,7 @@ export async function register(req, res, next) {
   }
 }
 
-export async function login(req, res, next) {
+async function login(req, res, next) {
   try {
     const data = validate(loginAuthSchema, req.body);
     const { accessToken, refreshToken, cookieOptions } =
@@ -50,7 +50,7 @@ export async function login(req, res, next) {
   }
 }
 
-export async function refresh(req, res, next) {
+async function refresh(req, res, next) {
   try {
     const token = req.cookies?.refreshToken;
 
@@ -62,7 +62,7 @@ export async function refresh(req, res, next) {
   }
 }
 
-export async function logout(req, res, next) {
+async function logout(req, res, next) {
   try {
     const token = req.cookies?.refreshToken;
 

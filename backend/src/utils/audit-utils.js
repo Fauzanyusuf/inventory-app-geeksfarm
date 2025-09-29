@@ -1,6 +1,6 @@
 import { logger } from "../application/logging.js";
 
-export function serializeForAudit(obj, seen = new WeakSet()) {
+function serializeForAudit(obj, seen = new WeakSet()) {
   if (obj == null) return null;
 
   if (typeof obj === "object") {

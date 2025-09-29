@@ -1,7 +1,7 @@
 import accessPermissionService from "../service/access-permission-service.js";
 import { logger } from "../application/logging.js";
 
-export async function listAccessPermissions(req, res, next) {
+async function listAccessPermissions(req, res, next) {
   try {
     const result = await accessPermissionService.listAccessPermissions();
 
@@ -17,7 +17,7 @@ export async function listAccessPermissions(req, res, next) {
   }
 }
 
-export async function getAccessPermission(req, res, next) {
+async function getAccessPermission(req, res, next) {
   try {
     const permissionId = req.params.id;
     const result = await accessPermissionService.getAccessPermissionById(

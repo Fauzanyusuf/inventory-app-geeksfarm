@@ -5,7 +5,7 @@ import { cleanupFilesOnError, deleteFile } from "../utils/image-utils.js";
 import { logger } from "../application/logging.js";
 import { createAuditLog } from "../utils/audit-utils.js";
 
-export async function createCategory(data, file = null, userId = null) {
+async function createCategory(data, file = null, userId = null) {
   try {
     const existing = await prisma.category.findFirst({
       where: { name: data.name },
@@ -54,7 +54,7 @@ export async function createCategory(data, file = null, userId = null) {
   }
 }
 
-export async function listCategories({ page = 1, limit = 10, search }) {
+async function listCategories({ page = 1, limit = 10, search }) {
   try {
     const skip = (page - 1) * limit;
     const where = { isDeleted: false };
@@ -90,7 +90,7 @@ export async function listCategories({ page = 1, limit = 10, search }) {
   }
 }
 
-export async function getCategoryById(id) {
+async function getCategoryById(id) {
   try {
     const result = await prisma.category.findUnique({
       where: { id, isDeleted: false },
@@ -122,7 +122,7 @@ export async function getCategoryById(id) {
   }
 }
 
-export async function updateCategory(id, data, userId = null) {
+async function updateCategory(id, data, userId = null) {
   try {
     const oldRecord = await prisma.category.findUnique({
       where: { id, isDeleted: false },
@@ -165,7 +165,7 @@ export async function updateCategory(id, data, userId = null) {
   }
 }
 
-export async function deleteCategory(id, userId = null) {
+async function deleteCategory(id, userId = null) {
   try {
     const oldRecord = await prisma.category.findUnique({
       where: { id, isDeleted: false },
@@ -206,7 +206,7 @@ export async function deleteCategory(id, userId = null) {
   }
 }
 
-export async function uploadCategoryImage(id, fileInfo, userId = null) {
+async function uploadCategoryImage(id, fileInfo, userId = null) {
   try {
     const category = await prisma.category.findUnique({
       where: { id, isDeleted: false },
@@ -238,7 +238,7 @@ export async function uploadCategoryImage(id, fileInfo, userId = null) {
   }
 }
 
-export async function getCategoryImage(categoryId) {
+async function getCategoryImage(categoryId) {
   try {
     const result = await prisma.category.findUnique({
       where: { id: categoryId, isDeleted: false },
@@ -274,7 +274,7 @@ export async function getCategoryImage(categoryId) {
   }
 }
 
-export async function deleteCategoryImage(categoryId, userId = null) {
+async function deleteCategoryImage(categoryId, userId = null) {
   try {
     const category = await prisma.category.findUnique({
       where: { id: categoryId, isDeleted: false },

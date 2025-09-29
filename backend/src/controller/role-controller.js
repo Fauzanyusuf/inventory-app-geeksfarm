@@ -1,6 +1,6 @@
 import roleService from "../service/role-service.js";
 
-export async function listRoles(req, res, next) {
+async function listRoles(req, res, next) {
   try {
     const result = await roleService.listRoles();
     res.status(200).json({ data: result, message: "Roles retrieved" });
@@ -9,7 +9,7 @@ export async function listRoles(req, res, next) {
   }
 }
 
-export async function getRole(req, res, next) {
+async function getRole(req, res, next) {
   try {
     const roleId = req.params.id;
     const result = await roleService.getRoleById(roleId);

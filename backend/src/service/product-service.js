@@ -118,7 +118,7 @@ async function createSingleProduct(
   return { product, batch, movement, images: imagesResult };
 }
 
-export async function listProducts({ page = 1, limit = 10, search } = {}) {
+async function listProducts({ page = 1, limit = 10, search } = {}) {
   try {
     const skip = (page - 1) * limit;
     const where = { isDeleted: false };
@@ -182,7 +182,7 @@ export async function listProducts({ page = 1, limit = 10, search } = {}) {
   }
 }
 
-export async function getProductById(id) {
+async function getProductById(id) {
   try {
     const product = await prisma.product.findUnique({
       where: { id, isDeleted: false },
@@ -232,7 +232,7 @@ export async function getProductById(id) {
   }
 }
 
-export async function createProduct(data, userId = null, files = null) {
+async function createProduct(data, userId = null, files = null) {
   const {
     quantity,
     costPrice,
@@ -292,7 +292,7 @@ export async function createProduct(data, userId = null, files = null) {
   }
 }
 
-export async function addImagesToProduct(productId, filesInfo, userId = null) {
+async function addImagesToProduct(productId, filesInfo, userId = null) {
   if (!Array.isArray(filesInfo) || filesInfo.length === 0) {
     throw new ResponseError(400, "No files provided");
   }
@@ -336,7 +336,7 @@ export async function addImagesToProduct(productId, filesInfo, userId = null) {
   }
 }
 
-export async function getProductImages(productId) {
+async function getProductImages(productId) {
   try {
     const product = await prisma.product.findUnique({
       where: { id: productId, isDeleted: false },
@@ -367,7 +367,7 @@ export async function getProductImages(productId) {
   }
 }
 
-export async function updateProductImages(
+async function updateProductImages(
   productId,
   newFiles,
   removeImageIds,
@@ -422,7 +422,7 @@ export async function updateProductImages(
   }
 }
 
-export async function deleteProductImage(productId, imageId, userId = null) {
+async function deleteProductImage(productId, imageId, userId = null) {
   try {
     const product = await prisma.product.findUnique({
       where: { id: productId, isDeleted: false },
@@ -457,11 +457,7 @@ export async function deleteProductImage(productId, imageId, userId = null) {
   }
 }
 
-export async function bulkCreateProducts(
-  productsData,
-  userId = null,
-  files = null
-) {
+async function bulkCreateProducts(productsData, userId = null, files = null) {
   if (!Array.isArray(productsData) || productsData.length === 0) {
     throw new ResponseError(400, "Products data must be a non-empty array");
   }
@@ -544,7 +540,7 @@ export async function bulkCreateProducts(
   }
 }
 
-export async function updateProduct(id, data, userId = null) {
+async function updateProduct(id, data, userId = null) {
   try {
     const existing = await prisma.product.findUnique({
       where: { id, isDeleted: false },
@@ -575,7 +571,7 @@ export async function updateProduct(id, data, userId = null) {
   }
 }
 
-export async function deleteProduct(id, userId = null) {
+async function deleteProduct(id, userId = null) {
   try {
     const existing = await prisma.product.findUnique({
       where: { id, isDeleted: false },
@@ -609,7 +605,7 @@ export async function deleteProduct(id, userId = null) {
   }
 }
 
-export async function listProductBatchesByProduct(
+async function listProductBatchesByProduct(
   productId,
   { page = 1, limit = 10, sortByExpired = true } = {}
 ) {
@@ -655,12 +651,7 @@ export async function listProductBatchesByProduct(
   }
 }
 
-export async function updateProductBatch(
-  productId,
-  batchId,
-  data,
-  userId = null
-) {
+async function updateProductBatch(productId, batchId, data, userId = null) {
   try {
     const batch = await prisma.productBatch.findFirst({
       where: { id: batchId, productId },
@@ -725,7 +716,7 @@ export async function updateProductBatch(
   }
 }
 
-export async function addProductStock(productId, data, userId = null) {
+async function addProductStock(productId, data, userId = null) {
   try {
     const product = await prisma.product.findUnique({
       where: { id: productId, isDeleted: false },

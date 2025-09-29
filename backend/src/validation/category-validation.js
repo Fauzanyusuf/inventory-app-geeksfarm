@@ -15,5 +15,3 @@ export const categoryUpdateSchema = z.object({
     .transform((val) => (val === "" ? undefined : val))
     .optional(),
 });
-
-export default { categoryCreateSchema, categoryUpdateSchema };

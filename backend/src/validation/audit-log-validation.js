@@ -11,7 +11,3 @@ export const auditLogQuerySchema = z.object({
   startDate: z.iso.date().optional(),
   endDate: z.iso.date().optional(),
 });
-
-export default {
-  auditLogQuerySchema,
-};

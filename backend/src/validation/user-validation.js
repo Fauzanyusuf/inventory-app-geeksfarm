@@ -14,5 +14,3 @@ export const updateUserSchema = z.object({
 export const approveUserValidation = z.object({
   roleId: z.string().min(1, "Role ID is required"),
 });
-
-export default { updateUserSchema, approveUserValidation };
