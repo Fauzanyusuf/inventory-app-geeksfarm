@@ -267,7 +267,7 @@ async function getUserImage(userId) {
     }
 
     if (!user.imageId) {
-      throw new ResponseError(404, "User has no image");
+      return null;
     }
 
     const image = await prisma.image.findUnique({
