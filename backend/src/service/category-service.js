@@ -1,9 +1,9 @@
 import { prisma } from "../application/database.js";
-import { ResponseError } from "../utils/response-error.js";
-import { replaceOneToOneImage, deleteImage } from "./image-service.js";
-import { cleanupFilesOnError, deleteFile } from "../utils/image-utils.js";
 import { logger } from "../application/logging.js";
 import { createAuditLog } from "../utils/audit-utils.js";
+import { cleanupFilesOnError, deleteFile } from "../utils/image-utils.js";
+import { ResponseError } from "../utils/response-error.js";
+import { deleteImage, replaceOneToOneImage } from "./image-service.js";
 
 async function createCategory(data, file = null, userId = null) {
   try {
@@ -104,13 +104,35 @@ async function getCategoryById(id) {
         },
         products: {
           where: { isDeleted: false },
-          select: { id: true, name: true },
+          select: {
+            id: true,
+            name: true,
+            barcode: true,
+            sellingPrice: true,
+            unit: true,
+            batches: {
+              select: { quantity: true },
+              where: { status: "AVAILABLE" },
+            },
+          },
         },
       },
     });
 
     if (!result) {
       throw new ResponseError(404, "Category not found");
+    }
+
+    if (result && Array.isArray(result.products)) {
+      result.products = result.products.map((p) => {
+        const totalQuantity = (p.batches || []).reduce(
+          (sum, b) => sum + (b.quantity || 0),
+          0
+        );
+        // Buang batches jika tidak ingin mengembalikannya
+        const { batches, ...rest } = p;
+        return { ...rest, totalQuantity };
+      });
     }
 
     logger.info("Category retrieved:", result);

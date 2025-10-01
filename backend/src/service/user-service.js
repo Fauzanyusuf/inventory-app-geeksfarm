@@ -65,7 +65,11 @@ async function getUserById(userId) {
         sex: true,
         role: {
           select: {
+            id: true,
             name: true,
+            permissions: {
+              select: { id: true, accessKey: true },
+            },
           },
         },
         image: {

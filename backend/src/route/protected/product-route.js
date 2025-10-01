@@ -28,7 +28,7 @@ router.post(
   rbacMiddleware(["product:manage"]),
   uploadArray("images", 5),
   productController.createProduct
-); // Supports both single product (object) and bulk products (array) creation with image upload
+);
 
 router.post(
   "/:id/images",
@@ -66,6 +66,12 @@ router.get(
   "/:id/batches",
   rbacMiddleware(["inventory:read"]),
   productController.listProductBatchesByProduct
+);
+
+router.get(
+  "/:productId/batches/:batchId",
+  rbacMiddleware(["inventory:read"]),
+  productController.getProductBatch
 );
 
 router.patch(

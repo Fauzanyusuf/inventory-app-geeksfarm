@@ -220,6 +220,21 @@ async function updateProductBatch(req, res, next) {
   }
 }
 
+async function getProductBatch(req, res, next) {
+  try {
+    const { productId, batchId } = req.params;
+
+    const result = await productService.getProductBatch(productId, batchId);
+
+    res.status(200).json({
+      data: result,
+      message: "Product batch retrieved successfully",
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function addProductStock(req, res, next) {
   try {
     const productId = req.params.id;
@@ -265,4 +280,5 @@ export default {
   listProductBatchesByProduct,
   updateProductBatch,
   addProductStock,
+  getProductBatch,
 };

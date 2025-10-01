@@ -231,6 +231,8 @@ async function getProductById(id) {
         sellingPrice: true,
         isPerishable: true,
         isActive: true,
+        createdAt: true,
+        updatedAt: true,
         category: {
           select: { id: true, name: true },
         },
@@ -650,6 +652,7 @@ async function listProductBatchesByProduct(
     const where = { productId };
 
     const orderBy = [
+      { status: "asc" },
       { expiredAt: "asc" },
       { receivedAt: "asc" },
       { createdAt: "asc" },
@@ -754,6 +757,31 @@ async function updateProductBatch(productId, batchId, data, userId = null) {
   }
 }
 
+async function getProductBatch(productId, batchId) {
+  try {
+    const batch = await prisma.productBatch.findFirst({
+      where: { id: batchId, productId },
+      omit: { productId: true },
+      include: {
+        stockMovements: {
+          omit: { productId: true, productBatchId: true },
+          orderBy: { createdAt: "desc" },
+        },
+      },
+    });
+
+    if (!batch) throw new ResponseError(404, "Product batch not found");
+
+    return batch;
+  } catch (err) {
+    logger.error(`Error retrieving product batch ${batchId}: ${err.message}`);
+    throw new ResponseError(
+      500,
+      `Failed to retrieve product batch: ${err.message}`
+    );
+  }
+}
+
 async function addProductStock(productId, data, userId = null) {
   try {
     const product = await prisma.product.findUnique({
@@ -821,4 +849,5 @@ export default {
   updateProductBatch,
   addProductStock,
   bulkCreateProducts,
+  getProductBatch,
 };

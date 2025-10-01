@@ -1,10 +1,11 @@
 import js from "@eslint/js";
-import globals from "globals";
-import eslintPluginUnusedImports from "eslint-plugin-unused-imports"; // import plugin
 import eslintPluginImport from "eslint-plugin-import"; // import plugin
+import eslintPluginUnusedImports from "eslint-plugin-unused-imports"; // import plugin
+import globals from "globals";
 
 import { defineConfig } from "eslint/config";
 
+// eslint-disable-next-line import/no-unused-modules
 export default defineConfig([
   js.configs.recommended,
   {
@@ -21,8 +22,8 @@ export default defineConfig([
       },
     },
     plugins: {
-      "unused-imports": eslintPluginUnusedImports, // Menggunakan import plugin
-      import: eslintPluginImport, // Menambahkan plugin import
+      "unused-imports": eslintPluginUnusedImports,
+      import: eslintPluginImport,
       js,
     },
     rules: {

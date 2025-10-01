@@ -1697,6 +1697,34 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+    delete:
+      summary: Delete product by ID
+      description: Delete a product by its ID (requires product:manage permission)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Product deleted successfully. No content returned.
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   # Products nested/sub-resource endpoints
   /products/{id}/images:
     post:
@@ -1930,6 +1958,49 @@ paths:
                 $ref: "#/components/schemas/Error"
 
   /products/{productId}/batches/{batchId}:
+    get:
+      summary: Get product batch by ID
+      description: Get a specific batch for a product (requires inventory:read permission)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: batchId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Product batch retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/ProductBatch"
+                  message:
+                    type: string
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Product or batch not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
     patch:
       summary: Update product batch
       description: Update a specific product batch (requires inventory:manage permission)
