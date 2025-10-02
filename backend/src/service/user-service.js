@@ -63,6 +63,7 @@ async function getUserById(userId) {
         email: true,
         phone: true,
         sex: true,
+        isVerified: true,
         role: {
           select: {
             id: true,
