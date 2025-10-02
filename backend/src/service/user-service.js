@@ -258,28 +258,24 @@ async function getAllUsers({ page = 1, limit = 10, search } = {}) {
 
 async function getUserImage(userId) {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, name: true, imageId: true },
+    const result = await prisma.user.findUnique({
+      where: { id: userId, isDeleted: false },
+      select: {
+        id: true,
+        name: true,
+        image: { omit: { productId: true } },
+      },
     });
 
-    if (!user) {
-      throw new ResponseError(404, "User not found");
+    if (!result) {
+      throw new ResponseError(404, "Category not found");
     }
 
-    if (!user.imageId) {
+    if (!result.image) {
       return null;
     }
 
-    const image = await prisma.image.findUnique({
-      where: { id: user.imageId },
-    });
-
-    if (!image) {
-      throw new ResponseError(404, "Image not found");
-    }
-
-    return image;
+    return result.image;
   } catch (err) {
     if (err instanceof ResponseError) throw err;
     throw new ResponseError(500, `Failed to get user image: ${err.message}`);

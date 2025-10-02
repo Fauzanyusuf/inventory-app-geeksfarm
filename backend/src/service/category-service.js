@@ -267,9 +267,7 @@ async function getCategoryImage(categoryId) {
       select: {
         id: true,
         name: true,
-        image: {
-          select: { id: true, url: true, thumbnailUrl: true, altText: true },
-        },
+        image: { omit: { productId: true } },
       },
     });
 
@@ -283,7 +281,7 @@ async function getCategoryImage(categoryId) {
 
     logger.info(`Retrieved image for category: ${categoryId}`);
 
-    return result;
+    return result.image;
   } catch (err) {
     if (err instanceof ResponseError) throw err;
     logger.error(
