@@ -1362,17 +1362,16 @@ paths:
             type: string
             format: cuid
       responses:
-        "200":
-          description: Category deleted successfully
+        "204":
+          description: Category deleted successfully. No content returned.
+        "403":
+          description: Insufficient permissions
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-        "403":
-          description: Insufficient permissions
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Category not found
           content:
             application/json:
               schema:

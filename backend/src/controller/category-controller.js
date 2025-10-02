@@ -94,9 +94,7 @@ async function deleteCategory(req, res, next) {
   try {
     const id = req.params.id;
     await categoryService.deleteCategory(id, req.user?.sub || null);
-    return res.status(204).json({
-      message: "Category deleted",
-    });
+    return res.status(204).send();
   } catch (err) {
     next(err);
   }

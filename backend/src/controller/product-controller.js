@@ -259,9 +259,7 @@ async function deleteProduct(req, res, next) {
 
     await productService.deleteProduct(productId, req.user?.sub || null);
 
-    return res.status(204).json({
-      message: "Product deleted successfully",
-    });
+    return res.status(204).send();
   } catch (err) {
     next(err);
   }
