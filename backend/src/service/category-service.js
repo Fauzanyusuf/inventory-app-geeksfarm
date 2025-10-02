@@ -278,7 +278,7 @@ async function getCategoryImage(categoryId) {
     }
 
     if (!result.image) {
-      throw new ResponseError(404, "Category has no image");
+      return null;
     }
 
     logger.info(`Retrieved image for category: ${categoryId}`);
