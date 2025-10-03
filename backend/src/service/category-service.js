@@ -1,7 +1,7 @@
 import { prisma } from "../application/database.js";
 import { logger } from "../application/logging.js";
 import { createAuditLog } from "../utils/audit-utils.js";
-import { cleanupFilesOnError, deleteFile } from "../utils/image-utils.js";
+import { cleanupFilesOnError, deleteFile, absoluteImageObject } from "../utils/image-utils.js";
 import { ResponseError } from "../utils/response-error.js";
 import { deleteImage, replaceOneToOneImage } from "./image-service.js";
 
@@ -83,7 +83,12 @@ async function listCategories({ page = 1, limit = 10, search }) {
 
     const totalPages = Math.ceil(total / limit) || 1;
 
-    return { data: categories, meta: { total, page, limit, totalPages } };
+    const converted = categories.map((c) => {
+      if (c.image) c.image = absoluteImageObject(c.image);
+      return c;
+    });
+
+    return { data: converted, meta: { total, page, limit, totalPages } };
   } catch (error) {
     logger.error("Category list error:", error);
     throw new ResponseError(500, "Failed to retrieve categories");
@@ -129,9 +134,8 @@ async function getCategoryById(id) {
           (sum, b) => sum + (b.quantity || 0),
           0
         );
-        // Buang batches jika tidak ingin mengembalikannya
-        const { batches, ...rest } = p;
-        return { ...rest, totalQuantity };
+    const { batches: _batches, ...rest } = p;
+    return { ...rest, totalQuantity };
       });
     }
 
@@ -279,9 +283,9 @@ async function getCategoryImage(categoryId) {
       return null;
     }
 
-    logger.info(`Retrieved image for category: ${categoryId}`);
+  logger.info(`Retrieved image for category: ${categoryId}`);
 
-    return result.image;
+  return absoluteImageObject(result.image);
   } catch (err) {
     if (err instanceof ResponseError) throw err;
     logger.error(

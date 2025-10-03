@@ -49,8 +49,28 @@ export function generateUniqueFilename(originalFilename) {
 }
 
 export function generateImageUrl(filename) {
-  if (!uploadsBaseUrl) return `${uploadsUrlPrefix}/${filename}`;
-  return `${uploadsBaseUrl.replace(/\/+$/, "")}${uploadsUrlPrefix}/${filename}`;
+  return `${uploadsUrlPrefix}/${filename}`;
+}
+
+// Convert a stored (relative) image path into an absolute URL using configured base
+export function absoluteImageUrl(pathOrUrl) {
+  if (!pathOrUrl) return pathOrUrl;
+  // Already absolute?
+  if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
+  if (!uploadsBaseUrl) return pathOrUrl;
+  // Ensure single slash between base and path
+  const base = uploadsBaseUrl.replace(/\/+$/, "");
+  const rel = String(pathOrUrl).replace(/^\/+/, "");
+  return `${base}/${rel}`;
+}
+
+export function absoluteImageObject(image) {
+  if (!image) return image;
+  return {
+    ...image,
+    url: absoluteImageUrl(image.url),
+    thumbnailUrl: absoluteImageUrl(image.thumbnailUrl),
+  };
 }
 
 export function extractFilename(urlOrPath) {

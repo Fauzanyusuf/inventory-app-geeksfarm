@@ -1,7 +1,7 @@
 import { prisma } from "../application/database.js";
 import { ResponseError } from "../utils/response-error.js";
 import { replaceOneToOneImage, deleteImage } from "./image-service.js";
-import { deleteFile } from "../utils/image-utils.js";
+import { deleteFile, absoluteImageObject } from "../utils/image-utils.js";
 import { createAuditLog } from "../utils/audit-utils.js";
 
 async function addImageToUser(userId, fileInfo, actorUserId = null) {
@@ -82,6 +82,9 @@ async function getUserById(userId) {
       },
     });
     if (!user) throw new ResponseError(404, "User not found");
+    if (user.image) {
+      user.image = absoluteImageObject(user.image);
+    }
     return user;
   } catch (err) {
     if (err instanceof ResponseError) throw err;
@@ -248,7 +251,10 @@ async function getAllUsers({ page = 1, limit = 10, search } = {}) {
     const totalPages = Math.ceil(total / limit) || 1;
 
     return {
-      items: users,
+      items: users.map((u) => ({
+        ...u,
+        image: u.image ? absoluteImageObject(u.image) : null,
+      })),
       meta: { total, page, limit, totalPages },
     };
   } catch (err) {
@@ -275,7 +281,7 @@ async function getUserImage(userId) {
       return null;
     }
 
-    return result.image;
+    return absoluteImageObject(result.image);
   } catch (err) {
     if (err instanceof ResponseError) throw err;
     throw new ResponseError(500, `Failed to get user image: ${err.message}`);

@@ -7,6 +7,8 @@ import {
   generateImageUrl,
   deleteFile,
   extractFilename,
+  absoluteImageUrl,
+  absoluteImageObject,
 } from "../utils/image-utils.js";
 import { createAuditLog } from "../utils/audit-utils.js";
 import { ResponseError } from "../utils/response-error.js";
@@ -224,12 +226,12 @@ export async function replaceOneToOneImage(
   return {
     image: {
       id: txResult.image.id,
-      url: txResult.image.url,
-      thumbnailUrl: txResult.image.thumbnailUrl,
+      url: absoluteImageUrl(txResult.image.url),
+      thumbnailUrl: absoluteImageUrl(txResult.image.thumbnailUrl),
       altText: txResult.image.altText,
       createdAt: txResult.image.createdAt,
     },
-    prevImage: txResult.prevImage,
+    prevImage: txResult.prevImage ? absoluteImageObject(txResult.prevImage) : null,
     owner: txResult.updatedOwner,
     fileCleanup,
   };
@@ -255,7 +257,7 @@ async function processAndCreateImage(
 
   const image = await createImageRecord(tx, imageData, actorUserId);
 
-  return { image };
+  return { image: absoluteImageObject(image) };
 }
 
 export async function processAndCreateImages(
@@ -269,12 +271,7 @@ export async function processAndCreateImages(
 
   const results = [];
   for (const fileInfo of filesInfo) {
-    const result = await processAndCreateImage(
-      fileInfo,
-      actorUserId,
-      options,
-      tx
-    );
+    const result = await processAndCreateImage(fileInfo, actorUserId, options, tx);
     results.push(result);
   }
 

@@ -68,12 +68,7 @@ async function register(request, file = null) {
 
     return {
       user: result,
-      image: {
-        id: imageResult?.image.id,
-        url: imageResult?.image.url,
-        thumbnailUrl: imageResult?.image.thumbnailUrl,
-        altText: imageResult?.image.altText,
-      },
+      image: imageResult?.image || null,
     };
   } catch (err) {
     if (file) await cleanupFilesOnError([file]);

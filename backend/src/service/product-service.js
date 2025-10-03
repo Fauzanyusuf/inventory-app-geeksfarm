@@ -2,7 +2,7 @@ import { prisma } from "../application/database.js";
 import { ResponseError } from "../utils/response-error.js";
 import { logger } from "../application/logging.js";
 import { processAndCreateImages, deleteImage } from "./image-service.js";
-import { cleanupFilesOnError, deleteFile } from "../utils/image-utils.js";
+import { cleanupFilesOnError, deleteFile, absoluteImageObject } from "../utils/image-utils.js";
 import { createAuditLog } from "../utils/audit-utils.js";
 
 function getBatchStatus(expiredAt, quantity) {
@@ -200,6 +200,10 @@ async function listProducts(filters = {}) {
 
       // eslint-disable-next-line no-unused-vars
       const { batches, ...result } = product;
+
+      if (result.images && Array.isArray(result.images)) {
+        result.images = result.images.map((img) => absoluteImageObject(img));
+      }
       return { ...result, totalQuantity };
     });
 
@@ -261,6 +265,10 @@ async function getProductById(id) {
       (sum, batch) => sum + batch.quantity,
       0
     );
+
+    if (product.images && Array.isArray(product.images)) {
+      product.images = product.images.map((img) => absoluteImageObject(img));
+    }
 
     return { ...product, totalQuantity };
   } catch (err) {
@@ -392,7 +400,7 @@ async function getProductImages(productId) {
     });
 
     logger.info(`Retrieved ${images.length} images for product: ${productId}`);
-    return images;
+    return images.map((img) => absoluteImageObject(img));
   } catch (err) {
     if (err instanceof ResponseError) throw err;
     logger.error(
@@ -482,7 +490,7 @@ async function deleteProductImage(productId, imageId, userId = null) {
     const result = await deleteImage(imageId, userId);
 
     logger.info(`Deleted image ${imageId} from product: ${productId}`);
-    return result.image;
+    return absoluteImageObject(result.image);
   } catch (err) {
     if (err instanceof ResponseError) throw err;
     logger.error(
