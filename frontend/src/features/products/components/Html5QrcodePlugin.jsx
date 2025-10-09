@@ -76,26 +76,46 @@ const Html5QrcodePlugin = ({
 		return () => {
 			clearTimeout(timer);
 			if (html5QrCodeRef.current) {
-				// Check if scanner is running before trying to stop it
-				html5QrCodeRef.current
-					.getState()
-					.then((state) => {
-						if (state === 2) {
-							// Scanner is running
-							return html5QrCodeRef.current.stop();
-						}
-					})
-					.then(() => {
+				try {
+					// Check if scanner is running before trying to stop it
+					const state = html5QrCodeRef.current.getState();
+					if (state === 2) {
+						// Scanner is running, stop it
+						html5QrCodeRef.current
+							.stop()
+							.then(() => {
+								if (html5QrCodeRef.current) {
+									html5QrCodeRef.current.clear();
+								}
+							})
+							.catch((err) => {
+								// Only log error if it's not the "scanner not running" error
+								if (!err.message?.includes("scanner is not running")) {
+									console.error("Error stopping QR code scanner:", err);
+								}
+							});
+					} else {
+						// Scanner is not running, just clear
 						if (html5QrCodeRef.current) {
 							html5QrCodeRef.current.clear();
 						}
-					})
-					.catch((err) => {
-						// Only log error if it's not the "scanner not running" error
-						if (!err.message?.includes("scanner is not running")) {
-							console.error("Error stopping QR code scanner:", err);
-						}
-					});
+					}
+				} catch (err) {
+					// If getState() fails, try to stop and clear anyway
+					console.warn("Error getting scanner state:", err);
+					if (html5QrCodeRef.current) {
+						html5QrCodeRef.current
+							.stop()
+							.catch(() => {
+								// Ignore stop errors
+							})
+							.finally(() => {
+								if (html5QrCodeRef.current) {
+									html5QrCodeRef.current.clear();
+								}
+							});
+					}
+				}
 			}
 		};
 	}, [

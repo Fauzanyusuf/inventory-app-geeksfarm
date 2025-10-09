@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/contexts/ConfirmContext";
 import { useFormHandler } from "@/hooks/useFormHandler";
+import { toastUtils } from "@/hooks/useToast";
 
 const CategoryForm = () => {
 	const navigate = useNavigate();
@@ -175,7 +176,17 @@ const CategoryForm = () => {
 				? "Category updated successfully"
 				: "Category created successfully",
 			onSuccess: () => {
+				// Show toast notification
+				toastUtils.success(
+					isEdit ? "Kategori berhasil diperbarui!" : "Kategori berhasil dibuat!"
+				);
 				navigate("/categories");
+			},
+			onError: (error) => {
+				console.error("Form submission error:", error);
+				toastUtils.error(
+					isEdit ? "Gagal memperbarui kategori" : "Gagal membuat kategori"
+				);
 			},
 		});
 	};

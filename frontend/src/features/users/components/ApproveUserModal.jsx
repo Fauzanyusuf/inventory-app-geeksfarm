@@ -111,8 +111,10 @@ const ApproveUserModal = ({ user, open, onClose, onSuccess }) => {
 				<SelectField
 					name="roleId"
 					label="Role"
-					value={watch("roleId")}
-					onChange={(value) => setValue("roleId", value)}
+					value={watch("roleId") || ""}
+					onChange={(value) =>
+						setValue("roleId", value === undefined ? "" : value)
+					}
 					placeholder="Select role"
 					options={roles.map((r) => ({
 						value: r.id,

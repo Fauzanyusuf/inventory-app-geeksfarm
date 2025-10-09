@@ -321,7 +321,7 @@ body {
 
 	/* Page Layout Consistency */
 	.page-container {
-		@apply min-h-screen bg-background;
+		@apply min-h-full bg-background;
 	}
 
 	.page-header {

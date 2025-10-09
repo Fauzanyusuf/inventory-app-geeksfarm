@@ -80,135 +80,129 @@ const AccessPermissions = () => {
 	}
 
 	return (
-		<div className="min-h-screen bg-background">
-			{/* Main Content */}
-			<main className="max-w-7xl mx-auto">
-				<div>
-					{/* Permissions List */}
-					<div className="bg-card shadow overflow-hidden sm:rounded-lg">
-						<div className="px-4 py-5 sm:px-6">
-							<h3 className="text-lg leading-6 font-medium text-card-foreground">
-								System Permissions ({permissions.length})
-							</h3>
-							<p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-								View all access permissions and their associated roles.
-							</p>
-						</div>
+		<main className="max-w-7xl mx-auto">
+			<div>
+				{/* Permissions List */}
+				<div className="bg-card shadow overflow-hidden sm:rounded-lg">
+					<div className="px-4 py-5 sm:px-6">
+						<h3 className="text-lg leading-6 font-medium text-card-foreground">
+							System Permissions ({permissions.length})
+						</h3>
+						<p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+							View all access permissions and their associated roles.
+						</p>
+					</div>
 
-						{error && (
-							<div className="px-4 py-4 sm:px-6">
-								<div className="bg-warning border border-warning text-warning-foreground px-4 py-3 rounded-md">
-									{error}
-								</div>
+					{error && (
+						<div className="px-4 py-4 sm:px-6">
+							<div className="bg-warning border border-warning text-warning-foreground px-4 py-3 rounded-md">
+								{error}
 							</div>
-						)}
+						</div>
+					)}
 
-						<div
-							className="border-t"
-							style={{ borderColor: "var(--color-border)" }}>
-							{permissions.length > 0 ? (
-								<ul
-									className="divide-y"
-									style={{ borderColor: "var(--color-border)" }}>
-									{permissions.map((permission) => (
-										<li key={permission.id}>
-											<div
-												className="px-4 py-4 sm:px-6 cursor-pointer hover:bg-muted/50 transition-colors"
-												onClick={() =>
-													navigate(`/permissions/${permission.id}`)
-												}>
-												<div className="flex items-center justify-between">
-													<div className="flex-1">
-														<div className="flex items-center">
-															<div className="flex-shrink-0">
-																<div className="h-10 w-10 rounded-full bg-popover flex items-center justify-center">
-																	<svg
-																		className="h-6 w-6 text-popover-foreground"
-																		fill="none"
-																		stroke="currentColor"
-																		viewBox="0 0 24 24">
-																		<path
-																			strokeLinecap="round"
-																			strokeLinejoin="round"
-																			strokeWidth={2}
-																			d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-																		/>
-																	</svg>
-																</div>
+					<div
+						className="border-t"
+						style={{ borderColor: "var(--color-border)" }}>
+						{permissions.length > 0 ? (
+							<ul
+								className="divide-y"
+								style={{ borderColor: "var(--color-border)" }}>
+								{permissions.map((permission) => (
+									<li key={permission.id}>
+										<div
+											className="px-4 py-4 sm:px-6 cursor-pointer hover:bg-muted/50 transition-colors"
+											onClick={() => navigate(`/permissions/${permission.id}`)}>
+											<div className="flex items-center justify-between">
+												<div className="flex-1">
+													<div className="flex items-center">
+														<div className="flex-shrink-0">
+															<div className="h-10 w-10 rounded-full bg-popover flex items-center justify-center">
+																<svg
+																	className="h-6 w-6 text-popover-foreground"
+																	fill="none"
+																	stroke="currentColor"
+																	viewBox="0 0 24 24">
+																	<path
+																		strokeLinecap="round"
+																		strokeLinejoin="round"
+																		strokeWidth={2}
+																		d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+																	/>
+																</svg>
 															</div>
-															<div className="ml-4">
-																<div className="text-sm font-medium text-card-foreground">
-																	{permission.accessKey}
-																</div>
-																<div className="text-sm text-muted-foreground">
-																	{permission.roles?.length || 0} roles assigned
-																</div>
+														</div>
+														<div className="ml-4">
+															<div className="text-sm font-medium text-card-foreground">
+																{permission.accessKey}
+															</div>
+															<div className="text-sm text-muted-foreground">
+																{permission.roles?.length || 0} roles assigned
 															</div>
 														</div>
 													</div>
-													<div className="flex items-center space-x-2">
-														{permission.roles &&
-															permission.roles.length > 0 && (
-																<div className="flex flex-wrap gap-1 justify-end">
-																	{permission.roles.slice(0, 2).map((role) => (
-																		<span
-																			key={role.id}
-																			className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-popover text-popover-foreground">
-																			{role.name}
-																		</span>
-																	))}
-																	{permission.roles.length > 2 && (
-																		<span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-popover text-popover-foreground">
-																			+{permission.roles.length - 2} more
-																		</span>
-																	)}
-																</div>
+												</div>
+												<div className="flex items-center space-x-2">
+													{permission.roles && permission.roles.length > 0 && (
+														<div className="flex flex-wrap gap-1 justify-end">
+															{permission.roles.slice(0, 2).map((role) => (
+																<span
+																	key={role.id}
+																	className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-popover text-popover-foreground">
+																	{role.name}
+																</span>
+															))}
+															{permission.roles.length > 2 && (
+																<span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-popover text-popover-foreground">
+																	+{permission.roles.length - 2} more
+																</span>
 															)}
-														<svg
-															className="w-4 h-4 text-muted-foreground"
-															fill="none"
-															stroke="currentColor"
-															viewBox="0 0 24 24">
-															<path
-																strokeLinecap="round"
-																strokeLinejoin="round"
-																strokeWidth={2}
-																d="M9 5l7 7-7 7"
-															/>
-														</svg>
-													</div>
+														</div>
+													)}
+													<svg
+														className="w-4 h-4 text-muted-foreground"
+														fill="none"
+														stroke="currentColor"
+														viewBox="0 0 24 24">
+														<path
+															strokeLinecap="round"
+															strokeLinejoin="round"
+															strokeWidth={2}
+															d="M9 5l7 7-7 7"
+														/>
+													</svg>
 												</div>
 											</div>
-										</li>
-									))}
-								</ul>
-							) : (
-								<div className="text-center py-12">
-									<svg
-										className="mx-auto h-12 w-12 text-muted-foreground"
-										fill="none"
-										stroke="currentColor"
-										viewBox="0 0 24 24">
-										<path
-											strokeLinecap="round"
-											strokeLinejoin="round"
-											strokeWidth={2}
-											d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-										/>
-									</svg>
-									<h3 className="mt-2 text-sm font-medium text-card-foreground">
-										No permissions found
-									</h3>
-									<p className="mt-1 text-sm text-muted-foreground">
-										System permissions will appear here.
-									</p>
-								</div>
-							)}
-						</div>
+										</div>
+									</li>
+								))}
+							</ul>
+						) : (
+							<div className="text-center py-12">
+								<svg
+									className="mx-auto h-12 w-12 text-muted-foreground"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24">
+									<path
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										strokeWidth={2}
+										d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+									/>
+								</svg>
+								<h3 className="mt-2 text-sm font-medium text-card-foreground">
+									No permissions found
+								</h3>
+								<p className="mt-1 text-sm text-muted-foreground">
+									System permissions will appear here.
+								</p>
+							</div>
+						)}
 					</div>
 				</div>
-			</main>
-		</div>
+			</div>
+		</main>
 	);
 };
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { productsApi } from "@/services/api";
+import { productsApi, auditLogsApi } from "@/services/api";
 import { formatDate, formatPrice } from "@/utils/format";
 import { hasPermission } from "@/utils/permissions";
 import ProductEditor from "@/features/products/components/ProductEditor";
@@ -24,6 +24,7 @@ const ProductDetail = () => {
 	const [product, setProduct] = useState(null);
 	const [batches, setBatches] = useState([]);
 	const [loading, setLoading] = useState(true);
+	const [creator, setCreator] = useState(null);
 	const { id } = useParams();
 	const { user } = useAuth();
 	const navigate = useNavigate();
@@ -62,7 +63,6 @@ const ProductDetail = () => {
 			}
 		} catch (err) {
 			console.error("Failed to load product details", err);
-			// Redirect to dashboard on fetch error to avoid showing router error boundary
 			navigate("/dashboard");
 			return;
 		} finally {
@@ -70,17 +70,25 @@ const ProductDetail = () => {
 		}
 	}, [id, navigate]);
 
+	const fetchCreatorInfo = useCallback(async () => {
+		if (!id) return;
+
+		try {
+			const res = await auditLogsApi.getEntityCreator("Product", id);
+			setCreator(res?.data || null);
+		} catch (err) {
+			console.error("Failed to fetch creator info:", err);
+		}
+	}, [id]);
+
 	const handleAddStockSuccess = useCallback(() => {
-		// Refresh product details to show updated stock batches
 		fetchProductDetails();
 	}, [fetchProductDetails]);
 
 	const handleDeleteProduct = async () => {
-		// actual deletion is handled after user confirms in ConfirmModal
 		try {
 			setLoading(true);
 			await productsApi.deleteProduct(id);
-			// prefer SPA navigation
 			navigate("/dashboard");
 		} catch (err) {
 			console.error("Delete product failed", err);
@@ -92,7 +100,8 @@ const ProductDetail = () => {
 
 	useEffect(() => {
 		fetchProductDetails();
-	}, [fetchProductDetails]);
+		fetchCreatorInfo();
+	}, [fetchProductDetails, fetchCreatorInfo]);
 
 	// use shared formatDate from utils/format
 
@@ -473,12 +482,32 @@ const ProductDetail = () => {
 										</dd>
 									</div>
 									<div>
-										<dt>Created At</dt>
-										<dd>{formatDate(product.createdAt)}</dd>
+										<dt className="text-sm font-medium text-muted-foreground">
+											Created At
+										</dt>
+										<dd className="text-sm text-card-foreground mt-1">
+											{formatDate(product.createdAt)}
+										</dd>
 									</div>
 									<div>
-										<dt>Updated At</dt>
-										<dd>{formatDate(product.updatedAt)}</dd>
+										<dt className="text-sm font-medium text-muted-foreground">
+											Created By
+										</dt>
+										<dd className="text-sm text-card-foreground mt-1">
+											{creator ? (
+												<span className="font-medium">{creator.userName}</span>
+											) : (
+												<span className="text-muted-foreground">Unknown</span>
+											)}
+										</dd>
+									</div>
+									<div>
+										<dt className="text-sm font-medium text-muted-foreground">
+											Updated At
+										</dt>
+										<dd className="text-sm text-card-foreground mt-1">
+											{formatDate(product.updatedAt)}
+										</dd>
 									</div>
 								</dl>
 							</div>

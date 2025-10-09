@@ -33,7 +33,7 @@ const SelectField = ({
 				<Label
 					htmlFor={name}
 					className={cn(
-						"text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
+						"block text-sm font-medium text-muted-foreground mb-2",
 						errorMessage && "text-destructive"
 					)}>
 					{label}
@@ -46,7 +46,11 @@ const SelectField = ({
 			)}
 
 			<Select
-				value={value || undefined}
+				value={
+					value === "" || value === null || value === undefined
+						? undefined
+						: value
+				}
 				onValueChange={onChange}
 				disabled={disabled}
 				{...props}>

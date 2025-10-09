@@ -131,8 +131,10 @@ const Register = () => {
 								<SelectField
 									name="sex"
 									label="Gender"
-									value={watch("sex")}
-									onChange={(value) => setValue("sex", value)}
+									value={watch("sex") || ""}
+									onChange={(value) =>
+										setValue("sex", value === undefined ? "" : value)
+									}
 									placeholder="Select gender"
 									options={[
 										{ value: "MALE", label: "Male" },

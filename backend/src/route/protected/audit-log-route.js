@@ -5,9 +5,15 @@ import auditLogController from "../../controller/audit-log-controller.js";
 const router = express.Router();
 
 router.get(
-  "/",
-  rbacMiddleware(["user:manage"]),
-  auditLogController.listAuditLogs
+	"/",
+	rbacMiddleware(["user:manage"]),
+	auditLogController.listAuditLogs
+);
+
+router.get(
+	"/creator/:entity/:entityId",
+	rbacMiddleware(["product:read"]),
+	auditLogController.getEntityCreator
 );
 
 export default router;

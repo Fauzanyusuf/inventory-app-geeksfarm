@@ -14,7 +14,7 @@ const CategoriesList = () => {
 		currentPage: 1,
 		totalPages: 1,
 		totalItems: 0,
-		pageSize: 10,
+		pageSize: 20,
 	});
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState("");

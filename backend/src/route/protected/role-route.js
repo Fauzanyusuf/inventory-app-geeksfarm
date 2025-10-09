@@ -6,5 +6,10 @@ const router = express.Router();
 
 router.get("/", rbacMiddleware(["user:read"]), roleController.listRoles);
 router.get("/:id", rbacMiddleware(["user:read"]), roleController.getRole);
+router.patch(
+	"/:id/permissions",
+	rbacMiddleware(["user:manage"]),
+	roleController.updateRolePermissions
+);
 
 export default router;

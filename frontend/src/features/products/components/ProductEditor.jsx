@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
 	productCreateSchema,
 	productUpdateSchema,
@@ -40,7 +40,7 @@ const ProductEditor = ({ mode = "create", productId = null, onSuccess }) => {
 			sellingPrice: "",
 			costPrice: "",
 			isActive: false,
-			categoryId: null,
+			categoryId: "",
 			quantity: "",
 			receivedAt: new Date().toISOString().split("T")[0],
 			expiredAt: "",
@@ -102,7 +102,11 @@ const ProductEditor = ({ mode = "create", productId = null, onSuccess }) => {
 							description: prod.description || "",
 							unit: prod.unit || "pcs",
 							sellingPrice: prod.sellingPrice || "",
-							categoryId: prod.categoryId || prod.category?.id || "",
+							categoryId: prod.categoryId
+								? String(prod.categoryId)
+								: prod.category?.id
+								? String(prod.category.id)
+								: "",
 							isPerishable: Boolean(prod.isPerishable),
 							isActive: Boolean(prod.isActive),
 						});
@@ -125,6 +129,12 @@ const ProductEditor = ({ mode = "create", productId = null, onSuccess }) => {
 	useEffect(() => {
 		if (!isPerishable) setValue("expiredAt", "");
 	}, [isPerishable, setValue]);
+
+	// Memoized categoryId value to prevent controlled/uncontrolled switching
+	const categoryIdValue = useMemo(() => {
+		const value = watch("categoryId");
+		return value === null || value === undefined ? "" : String(value);
+	}, [watch]);
 
 	const handleFileChange = (e) => {
 		const files = Array.from(e.target.files || []);
@@ -154,15 +164,29 @@ const ProductEditor = ({ mode = "create", productId = null, onSuccess }) => {
 					"unit",
 					"sellingPrice",
 					"costPrice",
-					"categoryId",
 					"isPerishable",
 					"isActive",
 					"movementNote",
 				].forEach((k) => {
-					if (formData[k] !== undefined && formData[k] !== null) {
+					if (
+						formData[k] !== undefined &&
+						formData[k] !== null &&
+						formData[k] !== ""
+					) {
 						patchPayload[k] = formData[k];
 					}
 				});
+
+				// Handle categoryId separately to convert empty string to null
+				if (
+					formData.categoryId !== undefined &&
+					formData.categoryId !== null &&
+					formData.categoryId !== ""
+				) {
+					patchPayload.categoryId = formData.categoryId;
+				} else if (formData.categoryId === "") {
+					patchPayload.categoryId = null;
+				}
 
 				console.log("Patch Payload:", patchPayload);
 
@@ -184,6 +208,17 @@ const ProductEditor = ({ mode = "create", productId = null, onSuccess }) => {
 					if (key === "images") {
 						const imgs = formData.images || [];
 						imgs.forEach((file) => submitData.append("images", file));
+					} else if (key === "categoryId") {
+						// Handle categoryId separately - convert empty string to null
+						if (
+							formData[key] !== "" &&
+							formData[key] !== null &&
+							formData[key] !== undefined
+						) {
+							submitData.append(key, formData[key]);
+						} else if (formData[key] === "") {
+							submitData.append(key, "");
+						}
 					} else if (
 						formData[key] !== "" &&
 						formData[key] !== null &&
@@ -394,8 +429,10 @@ const ProductEditor = ({ mode = "create", productId = null, onSuccess }) => {
 						<SelectField
 							name="categoryId"
 							label="Category"
-							value={watch("categoryId")}
-							onChange={(value) => setValue("categoryId", value)}
+							value={categoryIdValue}
+							onChange={(value) =>
+								setValue("categoryId", value === undefined ? "" : value)
+							}
 							placeholder="Select Category"
 							options={categories.map((c) => ({
 								value: c.id,

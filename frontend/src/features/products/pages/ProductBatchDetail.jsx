@@ -248,8 +248,10 @@ const ProductBatchDetail = () => {
 											<SelectField
 												name="status"
 												label="Status"
-												value={watch("status")}
-												onChange={(value) => setValue("status", value)}
+												value={watch("status") || ""}
+												onChange={(value) =>
+													setValue("status", value === undefined ? "" : value)
+												}
 												onBlur={register("status").onBlur}
 												errors={errors}
 												placeholder="Pilih status"

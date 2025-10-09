@@ -416,14 +416,21 @@ export const salesApi = {
 
 export const rolesApi = {
 	getRoles: () => apiCall("/roles"),
-
 	getRole: (id) => apiCall(`/roles/${id}`).then((r) => r.data || null),
+	updateRolePermissions: (id, permissionIds) =>
+		apiCall(`/roles/${id}/permissions`, {
+			method: "PATCH",
+			body: JSON.stringify({ permissionIds }),
+		}).then((r) => r.data || null),
 };
 
 export const auditLogsApi = {
 	getAuditLogs: (params = {}) => {
 		const queryString = new URLSearchParams(params).toString();
 		return apiCall(`/audit-logs?${queryString}`);
+	},
+	getEntityCreator: (entity, entityId) => {
+		return apiCall(`/audit-logs/creator/${entity}/${entityId}`);
 	},
 };
 
