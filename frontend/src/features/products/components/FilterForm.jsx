@@ -13,7 +13,7 @@ import {
 import PriceInput from "./PriceInput";
 import BarcodeScanner from "./BarcodeScanner";
 import { ScanBarcodeIcon } from "lucide-react";
-import { useProductListParams } from "../hooks/useProductListParams";
+import { usePaginationParams } from "@/hooks/usePaginationParams";
 import { productListQuerySchema } from "@/validation/product-validation";
 import {
 	SORT_OPTIONS,
@@ -30,7 +30,7 @@ import {
 
 const FilterForm = memo(({ categories, formError, setFormError }) => {
 	const navigate = useNavigate();
-	const { getParam, updateParam } = useProductListParams();
+	const { getParam, updateParam } = usePaginationParams();
 	const [showScanner, setShowScanner] = useState(false);
 
 	const handleFilterSubmit = useCallback(

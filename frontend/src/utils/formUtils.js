@@ -1,22 +1,7 @@
-/**
- * Form utility functions for common form patterns
- * Consolidates form-related logic and validation helpers
- */
-
-// Import the existing getErrorFromRHF function
 export const getErrorFromRHF = (errorsObj, field) => {
 	if (!errorsObj || !field) return null;
 	return errorsObj[field]?.message || null;
 };
-
-/**
- * Create form field props for react-hook-form
- * @param {object} register - React Hook Form register function
- * @param {object} errors - React Hook Form errors object
- * @param {string} name - Field name
- * @param {object} options - Additional options
- * @returns {object} Form field props
- */
 export const createFormFieldProps = (register, errors, name, options = {}) => {
 	const error = getErrorFromRHF(errors, name);
 
@@ -28,12 +13,6 @@ export const createFormFieldProps = (register, errors, name, options = {}) => {
 	};
 };
 
-/**
- * Validate form data against schema
- * @param {object} data - Form data
- * @param {object} schema - Validation schema (zod)
- * @returns {object} Validation result
- */
 export const validateFormData = (data, schema) => {
 	try {
 		const result = schema.parse(data);
@@ -51,11 +30,6 @@ export const validateFormData = (data, schema) => {
 	}
 };
 
-/**
- * Reset form to initial values
- * @param {object} formMethods - React Hook Form methods
- * @param {object} initialValues - Initial form values
- */
 export const resetForm = (formMethods, initialValues = {}) => {
 	const { reset, setValue } = formMethods;
 
@@ -67,13 +41,6 @@ export const resetForm = (formMethods, initialValues = {}) => {
 		setValue(key, value);
 	});
 };
-
-/**
- * Get form submission handler
- * @param {Function} onSubmit - Submit handler function
- * @param {object} options - Options for the handler
- * @returns {Function} Form submission handler
- */
 export const createSubmitHandler = (onSubmit, options = {}) => {
 	const { onSuccess, onError, showSuccess = true } = options;
 
@@ -87,7 +54,7 @@ export const createSubmitHandler = (onSubmit, options = {}) => {
 
 			if (showSuccess) {
 				// TODO: Show success toast/notification
-				console.log("Form submitted successfully");
+				// Success handled by caller
 			}
 
 			return result;
@@ -103,11 +70,6 @@ export const createSubmitHandler = (onSubmit, options = {}) => {
 	};
 };
 
-/**
- * Create form validation rules
- * @param {object} rules - Validation rules object
- * @returns {object} React Hook Form validation rules
- */
 export const createValidationRules = (rules) => {
 	const validationRules = {};
 
@@ -123,12 +85,6 @@ export const createValidationRules = (rules) => {
 	return validationRules;
 };
 
-/**
- * Format form data for API submission
- * @param {object} data - Form data
- * @param {object} mapping - Field mapping object
- * @returns {object} Formatted data
- */
 export const formatFormDataForAPI = (data, mapping = {}) => {
 	const formatted = {};
 
@@ -153,12 +109,6 @@ export const formatFormDataForAPI = (data, mapping = {}) => {
 	return formatted;
 };
 
-/**
- * Create form field error display
- * @param {string} error - Error message
- * @param {string} className - Additional CSS classes
- * @returns {object|null} Error display object
- */
 export const createFieldError = (error, className = "") => {
 	if (!error) return null;
 
@@ -168,20 +118,10 @@ export const createFieldError = (error, className = "") => {
 	};
 };
 
-/**
- * Check if form has any errors
- * @param {object} errors - React Hook Form errors object
- * @returns {boolean} True if form has errors
- */
 export const hasFormErrors = (errors) => {
 	return Object.keys(errors).length > 0;
 };
 
-/**
- * Get all form errors as array
- * @param {object} errors - React Hook Form errors object
- * @returns {Array} Array of error messages
- */
 export const getAllFormErrors = (errors) => {
 	const errorMessages = [];
 
@@ -194,11 +134,6 @@ export const getAllFormErrors = (errors) => {
 	return errorMessages;
 };
 
-/**
- * Create form field configuration
- * @param {object} props - Field props
- * @returns {object} Form field configuration
- */
 export const createFormFieldConfig = ({
 	name,
 	label,
@@ -234,11 +169,6 @@ export const createFormFieldConfig = ({
 	};
 };
 
-/**
- * Create form section configuration
- * @param {object} props - Section props
- * @returns {object} Form section configuration
- */
 export const createFormSectionConfig = ({
 	title,
 	description,

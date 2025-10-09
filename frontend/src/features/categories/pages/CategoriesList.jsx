@@ -1,59 +1,55 @@
-import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router";
+import { useCallback } from "react";
+import { useNavigate, useSearchParams } from "react-router";
 import Pagination from "@/components/shared/Pagination";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { categoriesApi } from "@/services/api";
 import { hasPermission } from "@/utils/permissions";
-import { getErrorMessage } from "@/utils/errorUtils";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { useResourceData } from "@/hooks/useResourceData";
+import { usePaginationParams } from "@/hooks/usePaginationParams";
 
 const CategoriesList = () => {
-	const [categories, setCategories] = useState([]);
-	const [pagination, setPagination] = useState({
-		currentPage: 1,
-		totalPages: 1,
-		totalItems: 0,
-		pageSize: 20,
-	});
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState("");
+	const [searchParams] = useSearchParams();
 	const navigate = useNavigate();
 	const { user } = useAuth();
 
-	const fetchCategories = useCallback(async () => {
-		try {
-			setLoading(true);
-			const params = {
-				page: pagination.currentPage,
-				limit: pagination.pageSize,
-			};
-			const response = await categoriesApi.getCategories(params);
-			const items = Array.isArray(response) ? response : response.data || [];
-			setCategories(items);
-			const meta = Array.isArray(response) ? null : response.meta;
-			if (meta) {
-				setPagination((prev) => ({
-					...prev,
-					currentPage: meta.page || 1,
-					totalPages: meta.totalPages || 1,
-					totalItems: meta.total || items.length,
-					pageSize: meta.limit || prev.pageSize,
-				}));
-			} else {
-				setPagination((prev) => ({ ...prev, totalItems: items.length }));
-			}
-		} catch (err) {
-			console.error("Failed to fetch categories:", err);
-			setError(getErrorMessage(err, "categories", "load"));
-		} finally {
-			setLoading(false);
-		}
-	}, [pagination.currentPage, pagination.pageSize]);
+	// Build query params function
+	const buildQueryParams = useCallback(
+		(validated) => ({
+			page: validated.page,
+			limit: validated.limit,
+		}),
+		[]
+	);
 
-	useEffect(() => {
-		fetchCategories();
-	}, [fetchCategories]);
+	// Use generic resource data hook
+	const {
+		data: categories,
+		meta,
+		loading,
+		error,
+		validated,
+		totalPages,
+	} = useResourceData({
+		api: categoriesApi.getCategories,
+		schema: null, // No schema validation needed for simple pagination
+		searchParams,
+		buildParams: buildQueryParams,
+		resourceName: "categories",
+		options: {
+			onSuccess: (_res) => {
+				// Handle success if needed
+			},
+			onError: (err, _errorMessage) => {
+				console.error("Failed to fetch categories:", err);
+			},
+		},
+	});
+
+	// Use generic pagination params hook
+	const { handlePageChange, handlePageSizeChange } = usePaginationParams();
 
 	const handleCategoryClick = (categoryId) => {
 		navigate(`/categories/${categoryId}`);
@@ -61,12 +57,7 @@ const CategoriesList = () => {
 
 	if (loading) {
 		return (
-			<div className="flex items-center justify-center p-8">
-				<div className="text-center">
-					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-					<p className="mt-4 text-muted-foreground">Loading categories...</p>
-				</div>
-			</div>
+			<LoadingSpinner size="2xl" text="Loading categories..." fullScreen />
 		);
 	}
 
@@ -190,24 +181,18 @@ const CategoriesList = () => {
 				</div>
 			)}
 			{/* Pagination */}
-			<div className="mt-6">
-				<Pagination
-					currentPage={pagination.currentPage}
-					totalPages={pagination.totalPages}
-					totalItems={pagination.totalItems}
-					pageSize={pagination.pageSize}
-					onPageChange={(p) =>
-						setPagination((prev) => ({ ...prev, currentPage: p }))
-					}
-					onPageSizeChange={(ps) =>
-						setPagination((prev) => ({
-							...prev,
-							pageSize: ps,
-							currentPage: 1,
-						}))
-					}
-				/>
-			</div>
+			{meta && validated && (
+				<div className="mt-6">
+					<Pagination
+						currentPage={validated.page || 1}
+						totalPages={totalPages}
+						totalItems={meta.total || meta.totalItems || categories.length}
+						pageSize={validated.limit || 20}
+						onPageChange={handlePageChange}
+						onPageSizeChange={handlePageSizeChange}
+					/>
+				</div>
+			)}
 		</div>
 	);
 };

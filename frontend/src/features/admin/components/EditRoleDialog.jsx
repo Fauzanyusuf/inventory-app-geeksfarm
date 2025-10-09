@@ -10,9 +10,9 @@ import {
 	DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Badge } from "@/components/ui/badge";
 import { Edit, Save, X } from "lucide-react";
 
@@ -97,34 +97,15 @@ const EditRoleDialog = ({ role, onRoleUpdated }) => {
 			<DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
 				<DialogHeader>
 					<DialogTitle>Edit Role: {role?.name}</DialogTitle>
-					<DialogDescription>
-						Update role information and permissions.
-					</DialogDescription>
+					<DialogDescription>Update role permissions.</DialogDescription>
 				</DialogHeader>
 
 				<div className="space-y-6">
-					{/* Role Name */}
-					<div className="space-y-2">
-						<Label htmlFor="role-name">Role Name</Label>
-						<Input
-							id="role-name"
-							value={name}
-							onChange={(e) => setName(e.target.value)}
-							placeholder="Enter role name"
-							maxLength={50}
-						/>
-					</div>
-
 					{/* Permissions */}
 					<div className="space-y-4">
 						<Label>Permissions</Label>
 						{loading ? (
-							<div className="text-center py-4">
-								<div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
-								<p className="text-sm text-muted-foreground mt-2">
-									Loading permissions...
-								</p>
-							</div>
+							<LoadingSpinner size="sm" text="Loading permissions..." />
 						) : (
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-60 overflow-y-auto border rounded-md p-4">
 								{permissions.map((permission) => (
@@ -178,8 +159,8 @@ const EditRoleDialog = ({ role, onRoleUpdated }) => {
 					<Button onClick={handleSave} disabled={saving || !name.trim()}>
 						{saving ? (
 							<>
-								<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-								Saving...
+								<LoadingSpinner size="sm" />
+								<span>Saving...</span>
 							</>
 						) : (
 							<>

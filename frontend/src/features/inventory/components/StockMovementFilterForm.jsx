@@ -12,10 +12,10 @@ import {
 import { DatePicker } from "@/components/ui/date-picker";
 import BarcodeScanner from "@/features/products/components/BarcodeScanner";
 import { QrCode } from "lucide-react";
-import { useStockMovementParams } from "../hooks/useStockMovementParams";
+import { usePaginationParams } from "@/hooks/usePaginationParams";
 
-const StockMovementFilterForm = memo(({ _formError, setFormError }) => {
-	const { getParam, updateParam, updateParams } = useStockMovementParams();
+const StockMovementFilterForm = memo(() => {
+	const { getParam, updateParam, updateParams } = usePaginationParams();
 	const [showScanner, setShowScanner] = useState(false);
 
 	const handleFilterSubmit = useCallback(
@@ -29,14 +29,13 @@ const StockMovementFilterForm = memo(({ _formError, setFormError }) => {
 			const startDate = next.startDate;
 			const endDate = next.endDate;
 			if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
-				setFormError("Start date cannot be greater than end date");
+				console.warn("Start date cannot be greater than end date");
 				return;
 			}
 
-			setFormError("");
 			updateParams(next);
 		},
-		[updateParams, setFormError]
+		[updateParams]
 	);
 
 	const handleSearchChange = useCallback(

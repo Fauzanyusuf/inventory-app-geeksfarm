@@ -5,6 +5,7 @@ import { useConfirm } from "@/contexts/ConfirmContext";
 import { categoriesApi, productsApi } from "@/services/api";
 import { formatDate, formatPrice } from "@/utils/format";
 import { hasPermission } from "@/utils/permissions";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 // InPageBanner removed: detail pages now redirect to dashboard on fetch errors
 
@@ -165,16 +166,7 @@ const CategoryDetail = () => {
 
 	if (categoryLoading) {
 		return (
-			<div className="min-h-screen bg-background flex items-center justify-center">
-				<div className="text-center">
-					<div
-						className="animate-spin rounded-full h-12 w-12 border-b-2"
-						style={{ borderColor: "var(--color-primary)" }}></div>
-					<p className="mt-4 text-muted-foreground">
-						Loading category details...
-					</p>
-				</div>
-			</div>
+			<LoadingSpinner size="lg" text="Loading category details..." fullScreen />
 		);
 	}
 
@@ -314,14 +306,7 @@ const CategoryDetail = () => {
 										</p>
 									</div>
 								) : productsLoading ? (
-									<div className="text-center py-12">
-										<div
-											className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto"
-											style={{ borderColor: "var(--color-primary)" }}></div>
-										<p className="mt-4 text-muted-foreground">
-											Loading products...
-										</p>
-									</div>
+									<LoadingSpinner size="default" text="Loading products..." />
 								) : products.length > 0 ? (
 									<ul
 										className="divide-y"

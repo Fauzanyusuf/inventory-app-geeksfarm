@@ -5,7 +5,16 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { ConfirmModal } from "@/components/ui/modal";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const ConfirmContext = createContext(null);
 
@@ -42,13 +51,20 @@ export const ConfirmProvider = ({ children }) => {
 	return (
 		<ConfirmContext.Provider value={{ confirm }}>
 			{children}
-			<ConfirmModal
-				open={open}
-				title={title}
-				message={message}
-				onConfirm={handleConfirm}
-				onCancel={handleCancel}
-			/>
+			<AlertDialog open={open} onOpenChange={setOpen}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>{title}</AlertDialogTitle>
+						<AlertDialogDescription>{message}</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel onClick={handleCancel}>Cancel</AlertDialogCancel>
+						<AlertDialogAction onClick={handleConfirm}>
+							Confirm
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</ConfirmContext.Provider>
 	);
 };

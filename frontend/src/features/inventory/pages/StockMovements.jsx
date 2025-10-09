@@ -1,17 +1,49 @@
-import { useState } from "react";
-import { useStockMovementParams } from "../hooks/useStockMovementParams";
-import { useStockMovementsData } from "../hooks/useStockMovementsData";
+import { useSearchParams } from "react-router";
+import { useResourceData } from "@/hooks/useResourceData";
+import { usePaginationParams } from "@/hooks/usePaginationParams";
 import Pagination from "@/components/shared/Pagination";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import StockMovementTable from "../components/StockMovementTable";
 import StockMovementFilterForm from "../components/StockMovementFilterForm";
+import { stockMovementsApi } from "@/services/api";
 
 const StockMovements = () => {
-	const { searchParams, handlePageChange, handlePageSizeChange } =
-		useStockMovementParams();
-	const { movements, meta, loading, error } =
-		useStockMovementsData(searchParams);
-	const [formError, setFormError] = useState("");
+	const [searchParams] = useSearchParams();
+	const { handlePageChange, handlePageSizeChange } = usePaginationParams();
+
+	// Build query params function
+	const buildQueryParams = (validated) => ({
+		page: validated.page,
+		limit: validated.limit,
+		...(validated.search && { search: validated.search }),
+		...(validated.movementType &&
+			validated.movementType !== "all" && {
+				movementType: validated.movementType,
+			}),
+		...(validated.startDate && { startDate: validated.startDate }),
+		...(validated.endDate && { endDate: validated.endDate }),
+	});
+
+	// Use generic resource data hook
+	const {
+		data: movements,
+		meta,
+		loading,
+		error,
+	} = useResourceData({
+		api: stockMovementsApi.getStockMovements,
+		schema: null, // Basic validation handled in hook
+		searchParams,
+		buildParams: buildQueryParams,
+		resourceName: "stock movements",
+		options: {
+			enableDebounce: true,
+			debounceDelay: 300,
+			onError: (err, _errorMessage) => {
+				console.error("Failed to fetch stock movements:", err);
+			},
+		},
+	});
 
 	return (
 		<div className="form-container">
@@ -27,16 +59,7 @@ const StockMovements = () => {
 
 				{/* Filters */}
 				<div className="page-content-body">
-					<StockMovementFilterForm
-						formError={formError}
-						setFormError={setFormError}
-					/>
-
-					{formError && (
-						<Alert variant="destructive" className="mt-4">
-							<AlertDescription>{formError}</AlertDescription>
-						</Alert>
-					)}
+					<StockMovementFilterForm />
 				</div>
 
 				<div className="border-t border-border flex-1 flex flex-col">

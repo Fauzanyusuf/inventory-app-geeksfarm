@@ -1,158 +1,139 @@
-import { useState, useEffect, useCallback } from "react";
-import { useParams } from "react-router";
-
+import { useParams, useSearchParams } from "react-router";
 import { productsApi } from "@/services/api";
 import { formatDate } from "@/utils/format";
+import { useResourceData } from "@/hooks/useResourceData";
+import { usePaginationParams } from "@/hooks/usePaginationParams";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import Pagination from "@/components/shared/Pagination";
 
 const ProductBatches = () => {
 	const { id } = useParams();
-	const [batches, setBatches] = useState([]);
-	const [meta, setMeta] = useState({
-		page: 1,
-		limit: 10,
-		total: 0,
-		totalPages: 1,
+	const [searchParams] = useSearchParams();
+	const { handlePageChange, handlePageSizeChange } = usePaginationParams();
+
+	// Build query params function
+	const buildQueryParams = (validated) => ({
+		page: validated.page,
+		limit: validated.limit,
 	});
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState(null);
 
-	const fetchBatches = useCallback(
-		async (page = 1, limit = 10) => {
-			try {
-				setLoading(true);
-				setError(null);
-				const res = await productsApi.getProductBatches(id, { page, limit });
-				// res is normalized: { data, meta }
-				setBatches(res.data || []);
-				setMeta(
-					res.meta || {
-						page,
-						limit,
-						total: (res.data || []).length,
-						totalPages: 1,
-					}
-				);
-			} catch (err) {
-				console.error("Failed to load batches", err);
-				setError(err.message || "Failed to load batches");
-			} finally {
-				setLoading(false);
-			}
+	// Use generic resource data hook
+	const {
+		data: batches,
+		meta,
+		loading,
+		error,
+	} = useResourceData({
+		api: (params) => productsApi.getProductBatches(id, params),
+		schema: null, // Basic validation handled in hook
+		searchParams,
+		buildParams: buildQueryParams,
+		resourceName: "batches",
+		options: {
+			onError: (err, _errorMessage) => {
+				console.error("Failed to fetch batches:", err);
+			},
 		},
-		[id]
-	);
+	});
 
-	useEffect(() => {
-		fetchBatches(meta.page, meta.limit);
-	}, [fetchBatches, meta.page, meta.limit]);
-
-	if (loading)
-		return (
-			<div className="min-h-screen flex items-center justify-center">
-				<div>Loading batches...</div>
-			</div>
-		);
+	if (loading) {
+		return <LoadingSpinner size="lg" text="Loading batches..." fullScreen />;
+	}
 
 	return (
-		<div className="min-h-screen bg-gray-50">
-			<main className="max-w-7xl mx-auto">
-				<div className="bg-white shadow rounded-lg p-6">
-					<h2 className="text-lg font-semibold mb-4">Product Batches</h2>
-					{error && <div className="text-red-600 mb-4">{error}</div>}
-					<div className="mb-4 text-sm text-gray-600">
-						Showing page {meta.page} of {meta.totalPages} — {meta.total} total
-					</div>
-					{batches.length === 0 ? (
-						<div className="text-gray-500">No batches found</div>
-					) : (
-						<div className="overflow-x-auto">
-							<table className="min-w-full divide-y divide-gray-200">
-								<thead className="bg-gray-50">
-									<tr>
-										<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-											Batch ID
-										</th>
-										<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-											Quantity
-										</th>
-										<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-											Cost
-										</th>
-										<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-											Status
-										</th>
-										<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-											Received
-										</th>
-										<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-											Expired
-										</th>
-									</tr>
-								</thead>
-								<tbody className="bg-white divide-y divide-gray-200">
-									{batches.map((b) => (
-										<tr key={b.id} className="hover:bg-gray-50">
-											<td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
-												{b.id.slice(-8)}
-											</td>
-											<td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-												{b.quantity}
-											</td>
-											<td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-												{b.costPrice}
-											</td>
-											<td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-												{b.status}
-											</td>
-											<td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-												{formatDate(b.receivedAt)}
-											</td>
-											<td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-												{b.expiredAt ? formatDate(b.expiredAt) : "N/A"}
-											</td>
-										</tr>
-									))}
-								</tbody>
-							</table>
-						</div>
-					)}
-
-					<div className="mt-4 flex items-center gap-2">
-						<button
-							className="px-3 py-1 bg-gray-200 rounded"
-							onClick={() => {
-								const p = Math.max(1, (meta.page || 1) - 1);
-								fetchBatches(p, meta.limit);
-								setMeta((m) => ({ ...m, page: p }));
-							}}
-							disabled={meta.page <= 1}>
-							Prev
-						</button>
-						<button
-							className="px-3 py-1 bg-gray-200 rounded"
-							onClick={() => {
-								const p = Math.min(meta.totalPages || 1, (meta.page || 1) + 1);
-								fetchBatches(p, meta.limit);
-								setMeta((m) => ({ ...m, page: p }));
-							}}
-							disabled={meta.page >= (meta.totalPages || 1)}>
-							Next
-						</button>
-						<select
-							value={meta.limit}
-							onChange={(e) => {
-								const lim = Number(e.target.value) || 10;
-								setMeta((m) => ({ ...m, limit: lim, page: 1 }));
-								fetchBatches(1, lim);
-							}}
-							className="ml-auto border rounded px-2 py-1">
-							<option value={5}>5</option>
-							<option value={10}>10</option>
-							<option value={25}>25</option>
-						</select>
-					</div>
+		<div className="form-container">
+			{/* Main Content */}
+			<div className="page-content">
+				{/* Product Batches */}
+				<div className="page-content-header">
+					<h3 className="page-title">Product Batches ({meta?.total || 0})</h3>
+					<p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+						Track product batch information and inventory details.
+					</p>
 				</div>
-			</main>
+
+				{error && (
+					<Alert variant="destructive" className="mb-4">
+						<AlertDescription>{error}</AlertDescription>
+					</Alert>
+				)}
+
+				<div className="border-t border-border flex-1 flex flex-col">
+					{batches.length === 0 ? (
+						<div className="text-center py-12">
+							<div className="text-muted-foreground">No batches found</div>
+						</div>
+					) : (
+						<>
+							<div className="flex-1 overflow-auto">
+								<div className="overflow-x-auto">
+									<table className="min-w-full divide-y divide-border">
+										<thead className="bg-muted/50">
+											<tr>
+												<th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+													Batch ID
+												</th>
+												<th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+													Quantity
+												</th>
+												<th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+													Cost
+												</th>
+												<th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+													Status
+												</th>
+												<th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+													Received
+												</th>
+												<th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+													Expired
+												</th>
+											</tr>
+										</thead>
+										<tbody className="bg-card divide-y divide-border">
+											{batches.map((b) => (
+												<tr key={b.id} className="hover:bg-muted/50">
+													<td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-card-foreground">
+														{b.id.slice(-8)}
+													</td>
+													<td className="px-6 py-4 whitespace-nowrap text-sm text-card-foreground">
+														{b.quantity}
+													</td>
+													<td className="px-6 py-4 whitespace-nowrap text-sm text-card-foreground">
+														{b.costPrice}
+													</td>
+													<td className="px-6 py-4 whitespace-nowrap text-sm text-card-foreground">
+														{b.status}
+													</td>
+													<td className="px-6 py-4 whitespace-nowrap text-sm text-card-foreground">
+														{formatDate(b.receivedAt)}
+													</td>
+													<td className="px-6 py-4 whitespace-nowrap text-sm text-card-foreground">
+														{b.expiredAt ? formatDate(b.expiredAt) : "N/A"}
+													</td>
+												</tr>
+											))}
+										</tbody>
+									</table>
+								</div>
+							</div>
+
+							{/* Pagination */}
+							<div className="bg-card px-4 py-3 border-t border-border sm:px-6 flex-shrink-0">
+								<Pagination
+									currentPage={meta?.page || 1}
+									totalPages={meta?.totalPages || 1}
+									totalItems={meta?.total || 0}
+									pageSize={meta?.limit || 10}
+									onPageChange={handlePageChange}
+									onPageSizeChange={handlePageSizeChange}
+								/>
+							</div>
+						</>
+					)}
+				</div>
+			</div>
 		</div>
 	);
 };

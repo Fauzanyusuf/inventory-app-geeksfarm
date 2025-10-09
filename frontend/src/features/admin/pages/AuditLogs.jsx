@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { useSearchParams } from "react-router";
 import { auditLogsApi } from "@/services/api";
 import { formatDate } from "@/utils/format";
-import { getErrorMessage } from "@/utils/errorUtils";
+import { useResourceData } from "@/hooks/useResourceData";
+import { usePaginationParams } from "@/hooks/usePaginationParams";
 import {
 	Select,
 	SelectContent,
@@ -14,126 +16,87 @@ import { Label } from "@/components/ui/label";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { Badge } from "@/components/ui/badge";
+import { FileText } from "lucide-react";
 
 const AuditLogs = () => {
-	const [logs, setLogs] = useState([]);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState("");
-	const [dataFetched, setDataFetched] = useState(false);
+	const [searchParams] = useSearchParams();
+	const { handlePageChange, handlePageSizeChange } = usePaginationParams();
+
+	// Local filter state for UI controls
 	const [filters, setFilters] = useState({
 		userId: "",
 		action: "all",
 		startDate: "",
 		endDate: "",
 	});
-	const [pagination, setPagination] = useState({
-		currentPage: 1,
-		totalPages: 1,
-		totalItems: 0,
-		pageSize: 10,
-	});
 
-	const fetchLogs = useCallback(async () => {
-		if (dataFetched) return;
-
-		try {
-			setLoading(true);
+	// Build query params function with filter handling
+	const buildQueryParams = useCallback(
+		(validated) => {
 			const params = {
-				page: pagination.currentPage,
-				limit: pagination.pageSize,
+				page: validated.page,
+				limit: validated.limit,
 				...filters,
 			};
 
+			// Clean up empty values
 			Object.keys(params).forEach((key) => {
 				if (!params[key] || params[key] === "all") delete params[key];
 			});
 
-			const response = await auditLogsApi.getAuditLogs(params);
-			const items = Array.isArray(response) ? response : response.data || [];
-			setLogs(items);
+			return params;
+		},
+		[filters]
+	);
 
-			const meta = Array.isArray(response) ? null : response.meta;
-			if (meta) {
-				setPagination((prev) => ({
-					...prev,
-					currentPage: meta.page || 1,
-					totalPages: meta.totalPages || 1,
-					totalItems: meta.total || 0,
-					pageSize: meta.limit || 10,
-				}));
-			}
-			setDataFetched(true);
-		} catch (err) {
-			console.error("Failed to fetch audit logs:", err);
-			setError(getErrorMessage(err, "audit-logs", "load"));
-			setDataFetched(true);
-		} finally {
-			setLoading(false);
-		}
-	}, [pagination.currentPage, pagination.pageSize, dataFetched, filters]);
-
-	useEffect(() => {
-		if (!dataFetched) {
-			fetchLogs();
-		}
-	}, [dataFetched, fetchLogs]);
-
-	useEffect(() => {
-		setDataFetched(false);
-	}, [pagination.currentPage, pagination.pageSize, filters]);
-
-	const handlePageChange = (page) => {
-		setPagination((prev) => ({
-			...prev,
-			currentPage: page,
-		}));
-	};
-
-	const handlePageSizeChange = (pageSize) => {
-		setPagination((prev) => ({
-			...prev,
-			pageSize,
-			currentPage: 1, // Reset to first page when changing page size
-		}));
-	};
+	// Use generic resource data hook
+	const {
+		data: logs,
+		meta,
+		loading,
+		error,
+		validated,
+		totalPages,
+	} = useResourceData({
+		api: auditLogsApi.getAuditLogs,
+		schema: null, // Basic validation handled in hook
+		searchParams,
+		buildParams: buildQueryParams,
+		resourceName: "audit logs",
+		options: {
+			onError: (err, _errorMessage) => {
+				console.error("Failed to fetch audit logs:", err);
+			},
+		},
+	});
 
 	const handleFilterChange = (filterName, value) => {
 		setFilters((prev) => ({
 			...prev,
 			[filterName]: value,
 		}));
-		setPagination((prev) => ({
-			...prev,
-			currentPage: 1, // Reset to first page when filtering
-		}));
 	};
 
-	const getActionColor = (action) => {
+	const getActionBadgeVariant = (action) => {
 		switch (action) {
 			case "CREATE":
-				return "bg-success text-success-foreground";
+				return "default";
 			case "UPDATE":
-				return "bg-info text-info-foreground";
+				return "secondary";
 			case "DELETE":
-				return "bg-danger text-danger-foreground";
+				return "destructive";
 			case "LOGIN":
-				return "bg-primary text-primary-foreground";
+				return "default";
 			case "LOGOUT":
-				return "bg-muted text-muted-foreground";
+				return "outline";
 			default:
-				return "bg-warning text-warning-foreground";
+				return "secondary";
 		}
 	};
 
 	if (loading) {
-		return (
-			<div className="flex items-center justify-center p-8">
-				<div className="text-center">
-					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-					<p className="mt-4 text-muted-foreground">Loading audit logs...</p>
-				</div>
-			</div>
-		);
+		return <LoadingSpinner size="lg" text="Loading audit logs..." />;
 	}
 
 	return (
@@ -142,7 +105,7 @@ const AuditLogs = () => {
 			<div className="page-content">
 				{/* Audit Logs */}
 				<div className="page-content-header">
-					<h3 className="page-title">Audit Logs ({pagination.totalItems})</h3>
+					<h3 className="page-title">Audit Logs ({meta?.total || 0})</h3>
 					<p className="mt-1 max-w-2xl text-sm text-muted-foreground">
 						Track system activities and user actions.
 					</p>
@@ -219,12 +182,10 @@ const AuditLogs = () => {
 												<div className="flex items-center justify-between">
 													<div className="flex items-center">
 														<div className="flex-shrink-0">
-															<span
-																className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getActionColor(
-																	log.action
-																)}`}>
+															<Badge
+																variant={getActionBadgeVariant(log.action)}>
 																{log.action}
-															</span>
+															</Badge>
 														</div>
 														<div className="ml-4">
 															<div className="text-sm font-medium text-card-foreground">
@@ -255,29 +216,18 @@ const AuditLogs = () => {
 							{/* Pagination */}
 							<div className="bg-card px-4 py-3 border-t border-border sm:px-6 flex-shrink-0">
 								<Pagination
-									currentPage={pagination.currentPage}
-									totalPages={pagination.totalPages}
+									currentPage={validated?.page || 1}
+									totalPages={totalPages}
 									onPageChange={handlePageChange}
 									onPageSizeChange={handlePageSizeChange}
-									pageSize={pagination.pageSize}
-									totalItems={pagination.totalItems}
+									pageSize={validated?.limit || 10}
+									totalItems={meta?.total || 0}
 								/>
 							</div>
 						</>
 					) : (
 						<div className="text-center py-12">
-							<svg
-								className="mx-auto h-12 w-12 text-muted-foreground"
-								fill="none"
-								stroke="currentColor"
-								viewBox="0 0 24 24">
-								<path
-									strokeLinecap="round"
-									strokeLinejoin="round"
-									strokeWidth={2}
-									d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-								/>
-							</svg>
+							<FileText className="mx-auto h-12 w-12 text-muted-foreground" />
 							<h3 className="mt-2 text-sm font-medium text-card-foreground">
 								No audit logs found
 							</h3>

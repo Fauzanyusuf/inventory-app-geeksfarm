@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { accessPermissionsApi, rolesApi } from "@/services/api";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 const AccessPermissions = () => {
 	const [permissions, setPermissions] = useState([]);
@@ -68,14 +69,7 @@ const AccessPermissions = () => {
 
 	if (loading) {
 		return (
-			<div className="min-h-screen bg-background flex items-center justify-center">
-				<div className="text-center">
-					<div
-						className="animate-spin rounded-full h-12 w-12 border-b-2"
-						style={{ borderColor: "var(--color-primary)" }}></div>
-					<p className="mt-4 text-muted-foreground">Loading permissions...</p>
-				</div>
-			</div>
+			<LoadingSpinner size="lg" text="Loading permissions..." fullScreen />
 		);
 	}
 

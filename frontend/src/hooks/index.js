@@ -4,14 +4,10 @@
 // Form handling
 export { useFormHandler } from "./useFormHandler";
 
-// Async operations
-export { usePaginatedResource } from "./usePaginatedResource";
-
 // Error handling
 export { useErrorHandler } from "./useErrorHandler";
 
 // UI interactions
-export { useModal } from "./useModal";
 export { useDebounce } from "./useDebounce";
 export { useIsMobile } from "./use-mobile";
 export { useToast, toastUtils } from "./useToast";
@@ -22,3 +18,7 @@ export { default as useObjectURL } from "./useObjectURL";
 
 // Form utilities
 export { useUserFormData } from "./useUserFormData";
+
+// Generic data fetching and pagination
+export { useResourceData } from "./useResourceData";
+export { usePaginationParams } from "./usePaginationParams";

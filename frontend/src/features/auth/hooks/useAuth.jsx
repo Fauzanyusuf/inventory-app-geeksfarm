@@ -33,22 +33,7 @@ export const AuthProvider = ({ children }) => {
 				try {
 					// usersApi.getCurrentUser already returns `r.data || null`.
 					let me = await usersApi.getCurrentUser();
-					// If API returned a role reference without permissions, try to fetch role details
-					try {
-						if (
-							me &&
-							me.role &&
-							(!me.role.permissions || me.role.permissions.length === 0) &&
-							me.role.id
-						) {
-							const roleRes = await rolesApi.getRole(me.role.id);
-							const roleData = roleRes && roleRes.data ? roleRes.data : roleRes;
-							if (roleData) me = { ...me, role: roleData };
-						}
-					} catch {
-						// ignore role enrichment errors
-						console.debug("Role enrichment failed");
-					}
+					me = await enrichUserWithRole(me);
 					setUser(normalizeUser(me) || null);
 				} catch {
 					// If fetching user fails but refresh succeeded, mark as authenticated
@@ -61,6 +46,19 @@ export const AuthProvider = ({ children }) => {
 		}
 		return false;
 	}, []);
+
+	// Helper function to enrich user with role details
+	const enrichUserWithRole = async (user) => {
+		if (!user?.role?.id || user.role.permissions?.length > 0) return user;
+		try {
+			const roleRes = await rolesApi.getRole(user.role.id);
+			const roleData = roleRes?.data || roleRes;
+			return roleData ? { ...user, role: roleData } : user;
+		} catch {
+			console.debug("Role enrichment failed");
+			return user;
+		}
+	};
 
 	// Normalize user object: ensure a flat `permissions` string[] exists
 	const normalizeUser = (rawUser) => {
@@ -103,20 +101,7 @@ export const AuthProvider = ({ children }) => {
 				// If login didn't return full user payload, fetch it and enrich role if needed
 				try {
 					let me = await usersApi.getCurrentUser();
-					try {
-						if (
-							me &&
-							me.role &&
-							(!me.role.permissions || me.role.permissions.length === 0) &&
-							me.role.id
-						) {
-							const roleRes = await rolesApi.getRole(me.role.id);
-							const roleData = roleRes && roleRes.data ? roleRes.data : roleRes;
-							if (roleData) me = { ...me, role: roleData };
-						}
-					} catch (e) {
-						console.debug("Role enrichment failed", e);
-					}
+					me = await enrichUserWithRole(me);
 					setUser(normalizeUser(me) || null);
 				} catch {
 					// fallback: at least mark authenticated
@@ -138,20 +123,7 @@ export const AuthProvider = ({ children }) => {
 				setToken(accessToken);
 				try {
 					let me = await usersApi.getCurrentUser();
-					try {
-						if (
-							me &&
-							me.role &&
-							(!me.role.permissions || me.role.permissions.length === 0) &&
-							me.role.id
-						) {
-							const roleRes = await rolesApi.getRole(me.role.id);
-							const roleData = roleRes && roleRes.data ? roleRes.data : roleRes;
-							if (roleData) me = { ...me, role: roleData };
-						}
-					} catch (e) {
-						console.debug("Role enrichment failed", e);
-					}
+					me = await enrichUserWithRole(me);
 					setUser(normalizeUser(me) || null);
 				} catch {
 					setUser({ isAuthenticated: true });

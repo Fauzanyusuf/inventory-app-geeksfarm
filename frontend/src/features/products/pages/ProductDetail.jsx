@@ -9,6 +9,7 @@ import { useConfirm } from "@/contexts/ConfirmContext";
 import useObjectURL from "@/hooks/useObjectURL";
 import AddProductStockModal from "@/features/products/components/AddProductStockModal";
 import { Button } from "@/components/ui/button";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import {
 	Table,
 	TableBody,
@@ -215,16 +216,7 @@ const ProductDetail = () => {
 
 	if (loading) {
 		return (
-			<div className="min-h-screen flex items-center justify-center">
-				<div className="text-center">
-					<div
-						className="animate-spin rounded-full h-32 w-32 border-b-2"
-						style={{ borderBottomColor: "var(--color-primary)" }}></div>
-					<p className="mt-4 text-muted-foreground">
-						Loading product details...
-					</p>
-				</div>
-			</div>
+			<LoadingSpinner size="2xl" text="Loading product details..." fullScreen />
 		);
 	}
 
@@ -330,10 +322,7 @@ const ProductDetail = () => {
 																}
 																aria-live="polite">
 																{deletingImageIds.includes(img.id) ? (
-																	<span
-																		className="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"
-																		aria-hidden="true"
-																	/>
+																	<LoadingSpinner size="sm" />
 																) : (
 																	"×"
 																)}

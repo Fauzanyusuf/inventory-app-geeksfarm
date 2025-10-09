@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { accessPermissionsApi, rolesApi } from "@/services/api";
 import { Button } from "@/components/ui/button";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { ChevronLeftIcon } from "lucide-react";
 
 const AccessPermissionDetail = () => {
@@ -73,16 +74,11 @@ const AccessPermissionDetail = () => {
 
 	if (loading) {
 		return (
-			<div className="min-h-screen bg-background flex items-center justify-center">
-				<div className="text-center">
-					<div
-						className="animate-spin rounded-full h-12 w-12 border-b-2"
-						style={{ borderColor: "var(--color-primary)" }}></div>
-					<p className="mt-4 text-muted-foreground">
-						Loading permission details...
-					</p>
-				</div>
-			</div>
+			<LoadingSpinner
+				size="lg"
+				text="Loading permission details..."
+				fullScreen
+			/>
 		);
 	}
 

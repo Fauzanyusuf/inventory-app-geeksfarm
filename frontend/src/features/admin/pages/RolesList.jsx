@@ -11,6 +11,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import {
 	Card,
 	CardContent,
@@ -54,16 +55,7 @@ const RolesList = () => {
 	};
 
 	if (loading) {
-		return (
-			<div className="min-h-screen bg-background flex items-center justify-center">
-				<div className="text-center">
-					<div
-						className="animate-spin rounded-full h-12 w-12 border-b-2"
-						style={{ borderColor: "var(--color-primary)" }}></div>
-					<p className="mt-4 text-muted-foreground">Loading roles...</p>
-				</div>
-			</div>
-		);
+		return <LoadingSpinner size="lg" text="Loading roles..." fullScreen />;
 	}
 
 	return (

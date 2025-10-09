@@ -9,6 +9,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { formatDate } from "@/utils/format";
 import { ArrowUp, ArrowDown, RotateCcw } from "lucide-react";
 
@@ -89,7 +90,7 @@ const StockMovementTable = memo(({ movements, loading }) => {
 				return (
 					<Badge
 						variant="destructive"
-						className="bg-red-100 text-red-800 hover:bg-red-200">
+						className="text-red-800 dark:text-red-100 hover:bg-red-200">
 						Expired
 					</Badge>
 				);
@@ -137,16 +138,7 @@ const StockMovementTable = memo(({ movements, loading }) => {
 	};
 
 	if (loading) {
-		return (
-			<div className="flex items-center justify-center py-12">
-				<div className="text-center">
-					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-					<p className="mt-2 text-sm text-muted-foreground">
-						Loading stock movements...
-					</p>
-				</div>
-			</div>
-		);
+		return <LoadingSpinner size="default" text="Loading stock movements..." />;
 	}
 
 	if (!movements || movements.length === 0) {

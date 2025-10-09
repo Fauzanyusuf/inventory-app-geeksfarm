@@ -1,11 +1,18 @@
 import { useEffect, useState, useRef } from "react";
 import { rolesApi, usersApi } from "@/services/api";
 import { approveUserValidation } from "@/validation/user-validation";
-// Removed unused FormField import
-import { Modal } from "@/components/ui/modal";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogDescription,
+	DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { SelectField } from "@/components/ui/select-field";
 import { useFormHandler } from "@/hooks/useFormHandler";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 const ApproveUserModal = ({ user, open, onClose, onSuccess }) => {
 	const [roles, setRoles] = useState([]);
@@ -84,10 +91,7 @@ const ApproveUserModal = ({ user, open, onClose, onSuccess }) => {
 				aria-busy={loading}>
 				{loading ? (
 					<span className="inline-flex items-center gap-2">
-						<span
-							className="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"
-							aria-hidden="true"
-						/>
+						<LoadingSpinner size="sm" />
 						<span>Approving...</span>
 					</span>
 				) : (
@@ -98,34 +102,37 @@ const ApproveUserModal = ({ user, open, onClose, onSuccess }) => {
 	);
 
 	return (
-		<Modal
-			open={open}
-			onClose={onClose}
-			title={`Verify user: ${user.name}`}
-			footer={footer}>
-			<div className="space-y-4">
-				<p className="text-sm text-muted-foreground">
-					Assign a role before approving the account.
-				</p>
+		<Dialog open={open} onOpenChange={onClose}>
+			<DialogContent>
+				<DialogHeader>
+					<DialogTitle>Verify user: {user.name}</DialogTitle>
+					<DialogDescription>
+						Assign a role before approving the account.
+					</DialogDescription>
+				</DialogHeader>
 
-				<SelectField
-					name="roleId"
-					label="Role"
-					value={watch("roleId") || ""}
-					onChange={(value) =>
-						setValue("roleId", value === undefined ? "" : value)
-					}
-					placeholder="Select role"
-					options={roles.map((r) => ({
-						value: r.id,
-						label: r.name,
-					}))}
-					errors={errors}
-				/>
+				<div className="space-y-4">
+					<SelectField
+						name="roleId"
+						label="Role"
+						value={watch("roleId") || ""}
+						onChange={(value) =>
+							setValue("roleId", value === undefined ? "" : value)
+						}
+						placeholder="Select role"
+						options={roles.map((r) => ({
+							value: r.id,
+							label: r.name,
+						}))}
+						errors={errors}
+					/>
 
-				{error && <div className="text-sm text-destructive">{error}</div>}
-			</div>
-		</Modal>
+					{error && <div className="text-sm text-destructive">{error}</div>}
+				</div>
+
+				<DialogFooter>{footer}</DialogFooter>
+			</DialogContent>
+		</Dialog>
 	);
 };
 

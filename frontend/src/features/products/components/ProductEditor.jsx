@@ -3,7 +3,8 @@ import {
 	productCreateSchema,
 	productUpdateSchema,
 } from "@/validation/product-validation";
-import { categoriesApi, productsApi } from "@/services/api";
+import { productsApi } from "@/services/api";
+import { useCategoriesData } from "@/features/categories/hooks/useCategoriesData";
 import BarcodeScanner from "./BarcodeScanner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FormField } from "@/components/ui/form-field";
@@ -52,42 +53,11 @@ const ProductEditor = ({ mode = "create", productId = null, onSuccess }) => {
 	});
 
 	const { errors: rhfErrors } = formState;
-	const [categories, setCategories] = useState([]);
+	const { categories } = useCategoriesData({ limit: 1000 }); // Get all categories for editor
 	const [showScanner, setShowScanner] = useState(false);
 
 	useEffect(() => {
 		let cancelled = false;
-		const fetchAllCategories = async () => {
-			try {
-				const perPage = 100;
-				let page = 1;
-				let all = [];
-				while (true) {
-					const res = await categoriesApi.getCategories({
-						page,
-						limit: perPage,
-					});
-					const items = Array.isArray(res) ? res : res.data || [];
-					all = all.concat(items);
-					if (!res || !res.meta) {
-						if (items.length < perPage) break;
-					} else {
-						const { total, limit } = res.meta;
-						if (typeof total === "number" && typeof limit === "number") {
-							if (all.length >= total) break;
-						}
-					}
-					if (items.length < perPage) break;
-					page += 1;
-				}
-				if (cancelled) return;
-				setCategories(all);
-			} catch (err) {
-				console.error("Failed to fetch categories:", err);
-			}
-		};
-
-		fetchAllCategories();
 
 		if (isEdit) {
 			const fetchExisting = async () => {
@@ -150,10 +120,6 @@ const ProductEditor = ({ mode = "create", productId = null, onSuccess }) => {
 
 	const handleFormSubmit = async (values) => {
 		const submitFn = async (formData) => {
-			console.log("Form values:", formData);
-			console.log("Is Edit Mode:", isEdit);
-			console.log("Product ID:", productId);
-
 			if (isEdit) {
 				// Update existing product
 				const patchPayload = {};
@@ -188,8 +154,6 @@ const ProductEditor = ({ mode = "create", productId = null, onSuccess }) => {
 					patchPayload.categoryId = null;
 				}
 
-				console.log("Patch Payload:", patchPayload);
-
 				const result = await productsApi.updateProduct(productId, patchPayload);
 
 				// Handle image updates if images are provided
@@ -199,7 +163,6 @@ const ProductEditor = ({ mode = "create", productId = null, onSuccess }) => {
 					await productsApi.updateProductImages(productId, fd);
 				}
 
-				console.log("Update Result:", result);
 				return result;
 			} else {
 				// Create new product

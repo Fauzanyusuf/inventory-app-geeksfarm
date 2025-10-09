@@ -50,7 +50,7 @@ export const useErrorHandler = (initialState = null) => {
 
 		if (showToast) {
 			// TODO: Integrate with toast system when available
-			console.log("Toast:", errorMessage);
+			// Toast notification would be shown here
 		}
 	}, []);
 

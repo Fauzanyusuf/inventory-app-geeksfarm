@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { productsApi, categoriesApi } from "@/services/api";
+import { productsApi } from "@/services/api";
 import { getErrorMessage } from "@/utils/errorUtils";
 import { productListQuerySchema } from "@/validation/product-validation";
-import { CATEGORY_LIMIT } from "../constants/product-list-constants";
 
 /**
  * Custom hook for fetching products data
@@ -83,40 +82,5 @@ export const useProductsData = (searchParams) => {
 		error,
 		validated,
 		totalPages,
-	};
-};
-
-/**
- * Custom hook for fetching categories data
- * Handles loading categories for filter dropdown
- */
-export const useCategoriesData = () => {
-	const [categories, setCategories] = useState([]);
-	const [categoriesError, setCategoriesError] = useState("");
-
-	useEffect(() => {
-		const controller = new AbortController();
-
-		(async () => {
-			try {
-				const res = await categoriesApi.getCategories(
-					{ limit: CATEGORY_LIMIT },
-					{ signal: controller.signal }
-				);
-				setCategories(res?.data || []);
-			} catch (err) {
-				if (err.name !== "AbortError") {
-					console.error("Failed to load categories:", err.message);
-					setCategoriesError(getErrorMessage(err, "categories", "load"));
-				}
-			}
-		})();
-
-		return () => controller.abort();
-	}, []);
-
-	return {
-		categories,
-		categoriesError,
 	};
 };

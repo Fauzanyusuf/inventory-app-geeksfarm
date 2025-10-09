@@ -2,10 +2,13 @@ import { useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router";
 
 /**
- * Custom hook for managing URL parameters in ProductList
+ * Generic hook for managing URL parameters with pagination
  * Provides utilities for updating search parameters with automatic page reset
+ *
+ * @param {string} basePath - Base path for navigation (optional)
+ * @returns {Object} Pagination parameter utilities
  */
-export const useProductListParams = () => {
+export const usePaginationParams = (basePath = "") => {
 	const [searchParams] = useSearchParams();
 	const navigate = useNavigate();
 
@@ -35,9 +38,11 @@ export const useProductListParams = () => {
 				newParams.delete("page");
 			}
 
-			navigate(`?${newParams.toString()}`);
+			const queryString = newParams.toString();
+			const url = basePath ? `${basePath}?${queryString}` : `?${queryString}`;
+			navigate(url);
 		},
-		[searchParams, navigate]
+		[searchParams, navigate, basePath]
 	);
 
 	/**
@@ -79,9 +84,12 @@ export const useProductListParams = () => {
 			} else {
 				newParams.set("page", String(page));
 			}
-			navigate(`?${newParams.toString()}`);
+
+			const queryString = newParams.toString();
+			const url = basePath ? `${basePath}?${queryString}` : `?${queryString}`;
+			navigate(url);
 		},
-		[searchParams, navigate]
+		[searchParams, navigate, basePath]
 	);
 
 	/**
@@ -97,9 +105,34 @@ export const useProductListParams = () => {
 				newParams.set("limit", String(pageSize));
 			}
 			newParams.delete("page"); // Reset to page 1
-			navigate(`?${newParams.toString()}`);
+
+			const queryString = newParams.toString();
+			const url = basePath ? `${basePath}?${queryString}` : `?${queryString}`;
+			navigate(url);
 		},
-		[searchParams, navigate]
+		[searchParams, navigate, basePath]
+	);
+
+	/**
+	 * Clears all parameters except specified ones
+	 * @param {Array} keepParams - Array of parameter keys to keep
+	 */
+	const clearParams = useCallback(
+		(keepParams = []) => {
+			const newParams = new URLSearchParams();
+
+			keepParams.forEach((key) => {
+				const value = searchParams.get(key);
+				if (value !== null) {
+					newParams.set(key, value);
+				}
+			});
+
+			const queryString = newParams.toString();
+			const url = basePath ? `${basePath}?${queryString}` : `?${queryString}`;
+			navigate(url);
+		},
+		[searchParams, navigate, basePath]
 	);
 
 	return {
@@ -109,5 +142,6 @@ export const useProductListParams = () => {
 		getParam,
 		handlePageChange,
 		handlePageSizeChange,
+		clearParams,
 	};
 };
