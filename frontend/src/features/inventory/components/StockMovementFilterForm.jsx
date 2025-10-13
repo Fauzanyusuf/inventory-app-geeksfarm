@@ -1,4 +1,4 @@
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,10 +13,17 @@ import { DatePicker } from "@/components/ui/date-picker";
 import BarcodeScanner from "@/features/products/components/BarcodeScanner";
 import { QrCode } from "lucide-react";
 import { usePaginationParams } from "@/hooks/usePaginationParams";
+import { useDebounce } from "@/hooks/useDebounce";
 
 const StockMovementFilterForm = memo(() => {
 	const { getParam, updateParam, updateParams } = usePaginationParams();
 	const [showScanner, setShowScanner] = useState(false);
+	const [searchValue, setSearchValue] = useState(getParam("search") || "");
+	const debouncedSearchValue = useDebounce(searchValue, 500);
+
+	useEffect(() => {
+		updateParam("search", debouncedSearchValue);
+	}, [debouncedSearchValue, updateParam]);
 
 	const handleFilterSubmit = useCallback(
 		(e) => {
@@ -38,23 +45,12 @@ const StockMovementFilterForm = memo(() => {
 		[updateParams]
 	);
 
-	const handleSearchChange = useCallback(
-		(e) => {
-			updateParam("search", e.target.value);
-		},
-		[updateParam]
-	);
+	const handleSearchChange = useCallback((e) => {
+		setSearchValue(e.target.value);
+	}, []);
 
-	const handleScanSuccess = useCallback(
-		(decodedText) => {
-			updateParam("search", decodedText);
-			setShowScanner(false);
-		},
-		[updateParam]
-	);
-
-	const handleScanError = useCallback((error) => {
-		console.error("Barcode scan error:", error);
+	const handleScanSuccess = useCallback((decodedText) => {
+		setSearchValue(decodedText);
 		setShowScanner(false);
 	}, []);
 
@@ -97,7 +93,7 @@ const StockMovementFilterForm = memo(() => {
 								name="search"
 								type="text"
 								id="search"
-								value={getParam("search")}
+								value={searchValue}
 								onChange={handleSearchChange}
 								placeholder="Search by product name or barcode..."
 								className="flex-1"
@@ -169,8 +165,7 @@ const StockMovementFilterForm = memo(() => {
 			{/* Barcode Scanner Modal */}
 			{showScanner && (
 				<BarcodeScanner
-					onSuccess={handleScanSuccess}
-					onError={handleScanError}
+					onScanSuccess={handleScanSuccess}
 					onClose={() => setShowScanner(false)}
 				/>
 			)}

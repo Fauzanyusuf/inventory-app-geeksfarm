@@ -355,8 +355,6 @@ const Layout = () => {
 									? "Edit Profile"
 									: location.pathname.startsWith("/users/")
 									? "User Detail"
-									: location.pathname === "/scan"
-									? "Barcode Scanner"
 									: location.pathname === "/sales"
 									? "Sales Transaction"
 									: location.pathname === "/stock-movements"

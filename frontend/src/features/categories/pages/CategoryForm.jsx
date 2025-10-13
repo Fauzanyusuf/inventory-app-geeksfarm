@@ -79,13 +79,12 @@ const CategoryForm = () => {
 	const handleRemoveImage = async () => {
 		try {
 			const confirmed = await confirm({
-				title: "Hapus Foto Kategori",
+				title: "Delete Photo Category",
 				message:
-					"Apakah Anda yakin ingin menghapus foto kategori ini? Tindakan ini tidak dapat dibatalkan.",
+					"Are you sure you want to delete this category photo? This action cannot be undone.",
 			});
 
 			if (confirmed) {
-				// Jika sedang dalam mode edit dan ada currentImageUrl, hapus dari server
 				if (isEdit && id && currentImageUrl) {
 					try {
 						await categoriesApi.deleteCategoryImage(id);
@@ -97,7 +96,6 @@ const CategoryForm = () => {
 					}
 				}
 
-				// Reset state lokal
 				setImageFile(null);
 				setImagePreview(null);
 				if (currentImageUrl) {
@@ -134,7 +132,6 @@ const CategoryForm = () => {
 			await categoriesApi.deleteCategoryImage(categoryId);
 		} catch (err) {
 			console.error("Failed to delete current image:", err);
-			// Don't throw error here as it's not critical
 		}
 	};
 
@@ -146,23 +143,18 @@ const CategoryForm = () => {
 				await categoriesApi.updateCategory(id, data);
 				categoryId = id;
 
-				// Handle image changes for existing category
 				if (imageFile) {
-					// Delete current image if exists, then upload new one
 					await deleteCurrentImage(categoryId);
 					await uploadImage(categoryId);
 				} else if (!imagePreview && currentImageUrl) {
-					// User removed the image
 					await deleteCurrentImage(categoryId);
 				}
 
 				return { id: categoryId };
 			} else {
-				// Create new category first
 				const newCategory = await categoriesApi.createCategory(data);
 				categoryId = newCategory.id || newCategory.data?.id;
 
-				// Upload image if provided
 				if (imageFile) {
 					await uploadImage(categoryId);
 				}
@@ -176,7 +168,6 @@ const CategoryForm = () => {
 				? "Category updated successfully"
 				: "Category created successfully",
 			onSuccess: () => {
-				// Show toast notification
 				toastUtils.success(
 					isEdit ? "Kategori berhasil diperbarui!" : "Kategori berhasil dibuat!"
 				);

@@ -24,7 +24,6 @@ import {
 	Warehouse,
 	Shield,
 	ShoppingCart,
-	ScanBarcode,
 	FileText,
 	Key,
 } from "lucide-react";
@@ -56,14 +55,6 @@ const Dashboard = () => {
 						usersApi.getUsers({ limit: 0 }),
 						auditLogsApi.getAuditLogs({ limit: 0 }),
 					]);
-
-				// Debug logging to see response structure
-				console.log("Dashboard API Responses:", {
-					products: productsRes,
-					categories: categoriesRes,
-					users: usersRes,
-					audit: auditRes,
-				});
 
 				setStats({
 					totalProducts:
@@ -155,18 +146,6 @@ const Dashboard = () => {
 			hoverColor: "hover:bg-emerald-600",
 			stat: null,
 			statLabel: "Sales Transactions",
-		},
-		{
-			id: "scan",
-			title: "Barcode Scanner",
-			description: "Quickly scan product barcodes for instant lookup",
-			icon: ScanBarcode,
-			path: "/scan",
-			permission: "product:read",
-			color: "bg-cyan-500",
-			hoverColor: "hover:bg-cyan-600",
-			stat: null,
-			statLabel: "Quick Access",
 		},
 		{
 			id: "audit-logs",

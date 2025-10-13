@@ -68,7 +68,7 @@ const UserDetail = () => {
 		<div className="form-container">
 			<div className="page-content">
 				<div className="page-content-header">
-					<div className="flex items-center">
+					<div className="flex items-center mb-4 justify-center md:justify-start">
 						<div className="flex-shrink-0">
 							{user.image ? (
 								<img

@@ -25,11 +25,6 @@ const BarcodeScanner = ({ onScanSuccess, onClose }) => {
 		}, 1000);
 	};
 
-	const onScanError = (errorMessage) => {
-		// Only log scan errors, don't show them to user
-		console.debug("Scan error:", errorMessage);
-	};
-
 	const onScannerError = (err) => {
 		console.error("Scanner error:", err);
 		setError("Failed to initialize camera. Please check camera permissions.");
@@ -134,7 +129,6 @@ const BarcodeScanner = ({ onScanSuccess, onClose }) => {
 										useBarCodeDetectorIfSupported: true,
 									}}
 									qrCodeSuccessCallback={onNewScanResult}
-									qrCodeErrorCallback={onScanError}
 									onError={onScannerError}
 								/>
 							</Suspense>

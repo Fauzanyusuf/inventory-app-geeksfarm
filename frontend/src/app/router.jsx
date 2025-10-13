@@ -44,7 +44,6 @@ const AccessPermissionDetail = lazy(() =>
 	import("@/features/admin/pages/AccessPermissionDetail")
 );
 const SalesCommit = lazy(() => import("@/features/sales/pages/SalesCommit"));
-const ScanPage = lazy(() => import("@/features/products/pages/ScanPage"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -235,14 +234,6 @@ const router = createBrowserRouter([
 						element: (
 							<LazyWrapper>
 								<SalesCommit />
-							</LazyWrapper>
-						),
-					},
-					{
-						path: "scan",
-						element: (
-							<LazyWrapper>
-								<ScanPage />
 							</LazyWrapper>
 						),
 					},
