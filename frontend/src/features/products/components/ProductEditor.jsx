@@ -13,10 +13,8 @@ import { Label } from "@/components/ui/label";
 import { DatePicker } from "@/components/ui/date-picker";
 import { SelectField } from "@/components/ui/select-field";
 import { getErrorFromRHF } from "@/utils";
-import { Input } from "@/components/ui/input";
 import { useFormHandler } from "@/hooks/useFormHandler";
 import { toastUtils } from "@/hooks/useToast";
-import { BackButton } from "@/components/shared";
 
 const ProductEditor = ({ mode = "create", productId = null, onSuccess }) => {
 	const isEdit = mode === "edit" && productId;
@@ -48,7 +46,6 @@ const ProductEditor = ({ mode = "create", productId = null, onSuccess }) => {
 			expiredAt: "",
 			movementNote: "",
 			isPerishable: false,
-			images: [],
 		},
 		resetOnSuccess: false,
 	});
@@ -107,16 +104,6 @@ const ProductEditor = ({ mode = "create", productId = null, onSuccess }) => {
 		return value === null || value === undefined ? "" : String(value);
 	}, [watch]);
 
-	const handleFileChange = (e) => {
-		const files = Array.from(e.target.files || []);
-		if (files.length > 5) {
-			toastUtils.error("Maximum 5 images allowed");
-			return;
-		}
-		setValue("images", files);
-		e.target.value = null;
-	};
-
 	const handleScanSuccess = (decodedText) => setValue("barcode", decodedText);
 
 	const handleFormSubmit = async (values) => {
@@ -157,22 +144,12 @@ const ProductEditor = ({ mode = "create", productId = null, onSuccess }) => {
 
 				const result = await productsApi.updateProduct(productId, patchPayload);
 
-				// Handle image updates if images are provided
-				if (formData.images && formData.images.length > 0) {
-					const fd = new FormData();
-					formData.images.forEach((f) => fd.append("images", f));
-					await productsApi.updateProductImages(productId, fd);
-				}
-
 				return result;
 			} else {
 				// Create new product
 				const submitData = new FormData();
 				Object.keys(formData).forEach((key) => {
-					if (key === "images") {
-						const imgs = formData.images || [];
-						imgs.forEach((file) => submitData.append("images", file));
-					} else if (key === "categoryId") {
+					if (key === "categoryId") {
 						// Handle categoryId separately - convert empty string to null
 						if (
 							formData[key] !== "" &&
@@ -197,11 +174,8 @@ const ProductEditor = ({ mode = "create", productId = null, onSuccess }) => {
 		};
 
 		await onSubmit(values, submitFn, {
-			successMessage: isEdit
-				? "Product updated successfully!"
-				: "Product created successfully!",
 			onSuccess: () => {
-				// Show Sonner toast
+				// Show toast notification for successful submission
 				toastUtils.success(
 					isEdit
 						? "Product updated successfully!"
@@ -417,24 +391,7 @@ const ProductEditor = ({ mode = "create", productId = null, onSuccess }) => {
 						</div>
 					)}
 
-					<div>
-						<Label className="block text-sm font-medium text-muted-foreground">
-							Images
-						</Label>
-						<Input
-							type="file"
-							multiple
-							accept="image/*"
-							onChange={handleFileChange}
-						/>
-					</div>
-
 					<div className="form-actions">
-						<BackButton
-							to={isEdit ? `/products/${productId}` : "/dashboard"}
-							variant="outline">
-							Cancel
-						</BackButton>
 						<Button type="submit" disabled={loading}>
 							{loading
 								? isEdit

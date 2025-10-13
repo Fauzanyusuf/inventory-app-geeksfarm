@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { rolesApi } from "@/services/api";
-import { formatDate } from "@/utils/format";
 import EditRoleDialog from "../components/EditRoleDialog";
 import {
 	Table,
@@ -80,7 +79,6 @@ const RolesList = () => {
 								<TableRow>
 									<TableHead>Role Name</TableHead>
 									<TableHead>Permissions</TableHead>
-									<TableHead>Created</TableHead>
 									<TableHead className="text-right">Actions</TableHead>
 								</TableRow>
 							</TableHeader>
@@ -107,9 +105,6 @@ const RolesList = () => {
 													</span>
 												)}
 											</div>
-										</TableCell>
-										<TableCell className="text-sm text-muted-foreground">
-											{formatDate(role.createdAt)}
 										</TableCell>
 										<TableCell className="text-right">
 											<EditRoleDialog
