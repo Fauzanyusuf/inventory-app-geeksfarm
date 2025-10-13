@@ -139,8 +139,7 @@ const Html5QrcodePlugin = ({
 		<div
 			ref={qrCodeRef}
 			id={scannerId}
-			className="w-full h-64 bg-gray-100 rounded-lg"
-			style={{ minHeight: "250px" }}
+			className="w-full h-64 bg-gray-100 rounded-lg min-h-[250px]"
 		/>
 	);
 };

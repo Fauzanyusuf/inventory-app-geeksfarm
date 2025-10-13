@@ -16,6 +16,7 @@ import { getErrorFromRHF } from "@/utils";
 import { Input } from "@/components/ui/input";
 import { useFormHandler } from "@/hooks/useFormHandler";
 import { toastUtils } from "@/hooks/useToast";
+import { BackButton } from "@/components/shared";
 
 const ProductEditor = ({ mode = "create", productId = null, onSuccess }) => {
 	const isEdit = mode === "edit" && productId;
@@ -53,7 +54,7 @@ const ProductEditor = ({ mode = "create", productId = null, onSuccess }) => {
 	});
 
 	const { errors: rhfErrors } = formState;
-	const { categories } = useCategoriesData({ limit: 1000 }); // Get all categories for editor
+	const { categories } = useCategoriesData({ limit: 100 }); // Get all categories for editor
 	const [showScanner, setShowScanner] = useState(false);
 
 	useEffect(() => {
@@ -429,6 +430,11 @@ const ProductEditor = ({ mode = "create", productId = null, onSuccess }) => {
 					</div>
 
 					<div className="form-actions">
+						<BackButton
+							to={isEdit ? `/products/${productId}` : "/dashboard"}
+							variant="outline">
+							Cancel
+						</BackButton>
 						<Button type="submit" disabled={loading}>
 							{loading
 								? isEdit

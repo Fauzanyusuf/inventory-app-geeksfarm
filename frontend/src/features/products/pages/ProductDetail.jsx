@@ -10,6 +10,7 @@ import useObjectURL from "@/hooks/useObjectURL";
 import AddProductStockModal from "@/features/products/components/AddProductStockModal";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { BackButton } from "@/components/shared";
 import {
 	Table,
 	TableBody,
@@ -576,6 +577,11 @@ const ProductDetail = () => {
 				onClose={() => setShowAddStockModal(false)}
 				onSuccess={handleAddStockSuccess}
 			/>
+
+			{/* Back Button */}
+			<div className="mt-6">
+				<BackButton to="/dashboard">Back to Products</BackButton>
+			</div>
 		</div>
 	);
 };

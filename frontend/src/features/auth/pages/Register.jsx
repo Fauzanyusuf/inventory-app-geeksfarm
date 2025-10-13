@@ -131,12 +131,13 @@ const Register = () => {
 								<SelectField
 									name="sex"
 									label="Gender"
-									value={watch("sex") || ""}
+									value={watch("sex") || "NONE"}
 									onChange={(value) =>
-										setValue("sex", value === undefined ? "" : value)
+										setValue("sex", value === "NONE" ? null : value)
 									}
-									placeholder="Select gender"
+									placeholder="Select gender (optional)"
 									options={[
+										{ value: "NONE", label: "None" },
 										{ value: "MALE", label: "Male" },
 										{ value: "FEMALE", label: "Female" },
 									]}

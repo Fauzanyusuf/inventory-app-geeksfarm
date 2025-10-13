@@ -118,6 +118,38 @@ export const addProductStockValidation = z.object({
 	note: z.string().optional(),
 });
 
+// Dynamic validation schema that accepts isPerishable parameter
+export const createAddProductStockValidation = (isPerishable = false) => {
+	const baseSchema = z.object({
+		quantity: z.number().int().positive(),
+		costPrice: z.coerce.number().int().positive(),
+		receivedAt: z
+			.union([z.coerce.date(), z.string().transform((val) => new Date(val))])
+			.default(() => new Date()),
+		expiredAt: z
+			.union([
+				z.coerce.date(),
+				z.string().transform((val) => (val ? new Date(val) : undefined)),
+			])
+			.optional(),
+		note: z.string().optional(),
+	});
+
+	if (isPerishable) {
+		return baseSchema.refine(
+			(data) => {
+				return data.expiredAt instanceof Date;
+			},
+			{
+				message: "Expiration date required for perishable products",
+				path: ["expiredAt"],
+			}
+		);
+	}
+
+	return baseSchema;
+};
+
 export const productBulkCreateSchema = z.union([
 	z.array(productCreateSchema).min(1).max(50),
 	productCreateSchema,

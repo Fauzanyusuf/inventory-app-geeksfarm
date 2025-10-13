@@ -13,6 +13,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { SelectField } from "@/components/ui/select-field";
 import { useFormHandler } from "@/hooks/useFormHandler";
 import { toastUtils } from "@/hooks";
+import { BackButton } from "@/components/shared";
 
 const ProductBatchDetail = () => {
 	const { productId, batchId } = useParams();
@@ -28,6 +29,17 @@ const ProductBatchDetail = () => {
 		const fetchBatch = async () => {
 			try {
 				setLoading(true);
+
+				// Validate parameters
+				if (!productId || !batchId) {
+					console.error("Missing productId or batchId:", {
+						productId,
+						batchId,
+					});
+					navigate("/dashboard");
+					return;
+				}
+
 				const res = await productsApi.getProductBatch(productId, batchId);
 				if (!mounted) return;
 				if (!res) {
@@ -42,6 +54,7 @@ const ProductBatchDetail = () => {
 				} catch (e) {
 					// non-fatal
 					console.warn("Failed to fetch parent product", e);
+					console.warn("ProductId:", productId, "BatchId:", batchId);
 				}
 			} catch (err) {
 				console.error("Failed to fetch batch detail", err);
@@ -350,6 +363,13 @@ const ProductBatchDetail = () => {
 							</div>
 						</div>
 					</div>
+				</div>
+
+				{/* Back Button */}
+				<div className="mt-6">
+					<BackButton to={`/products/${productId}`}>
+						Back to Product Detail
+					</BackButton>
 				</div>
 			</main>
 		</div>

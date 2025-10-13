@@ -1,6 +1,6 @@
 // Removed unused useState import
 import { productsApi } from "@/services/api";
-import { addProductStockValidation } from "@/validation/product-validation";
+import { createAddProductStockValidation } from "@/validation/product-validation";
 import { FormField } from "@/components/ui/form-field";
 import {
 	Dialog,
@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useFormHandler } from "@/hooks/useFormHandler";
+import { toastUtils } from "@/hooks/useToast";
 
 const AddProductStockModal = ({
 	productId,
@@ -22,7 +23,7 @@ const AddProductStockModal = ({
 	onClose,
 	onSuccess,
 }) => {
-	// Use unified form handler
+	// Use unified form handler with dynamic validation schema
 	const {
 		register,
 		handleSubmit,
@@ -33,7 +34,7 @@ const AddProductStockModal = ({
 		loading,
 		onSubmit,
 		resetForm,
-	} = useFormHandler(addProductStockValidation, {
+	} = useFormHandler(createAddProductStockValidation(isPerishable), {
 		mode: "onBlur",
 		defaultValues: {
 			quantity: 1,
@@ -63,6 +64,9 @@ const AddProductStockModal = ({
 		await onSubmit(data, submitFn, {
 			successMessage: "Stock added successfully",
 			onSuccess: () => {
+				// Show Sonner toast
+				toastUtils.success("Stock berhasil ditambahkan!");
+
 				resetForm();
 				onClose();
 				if (onSuccess) {

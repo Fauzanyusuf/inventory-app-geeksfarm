@@ -6,6 +6,7 @@ import { categoriesApi, productsApi } from "@/services/api";
 import { formatDate, formatPrice } from "@/utils/format";
 import { hasPermission } from "@/utils/permissions";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { BackButton } from "@/components/shared";
 
 // InPageBanner removed: detail pages now redirect to dashboard on fetch errors
 
@@ -226,9 +227,7 @@ const CategoryDetail = () => {
 								)}
 							</div>
 						</div>
-						<div
-							className="border-t"
-							style={{ borderColor: "var(--color-border)" }}>
+						<div className="border-t border-border">
 							<dl className="striped sm:grid">
 								<div className="px-4 py-5 sm:px-6">
 									<dt>Category Name</dt>
@@ -279,9 +278,7 @@ const CategoryDetail = () => {
 									All products belonging to this category.
 								</p>
 							</div>
-							<div
-								className="border-t"
-								style={{ borderColor: "var(--color-border)" }}>
+							<div className="border-t border-border">
 								{productsError ? (
 									<div className="text-center py-12">
 										<div className="text-destructive-foreground">
@@ -308,9 +305,7 @@ const CategoryDetail = () => {
 								) : productsLoading ? (
 									<LoadingSpinner size="default" text="Loading products..." />
 								) : products.length > 0 ? (
-									<ul
-										className="divide-y"
-										style={{ borderColor: "var(--color-border)" }}>
+									<ul className="divide-y">
 										{products.map((product) => (
 											<li key={product.id}>
 												<div
@@ -393,6 +388,11 @@ const CategoryDetail = () => {
 							</div>
 						</div>
 					</div>
+				</div>
+
+				{/* Back Button */}
+				<div className="mt-6">
+					<BackButton to="/categories">Back to Categories List</BackButton>
 				</div>
 			</main>
 		</div>

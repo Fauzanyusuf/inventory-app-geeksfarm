@@ -3,8 +3,8 @@ import { useNavigate, useParams } from "react-router";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { usersApi } from "@/services/api";
 import { hasPermission } from "@/utils/permissions";
-import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { BackButton } from "@/components/shared";
 
 const UserDetail = () => {
 	const { id } = useParams();
@@ -98,9 +98,7 @@ const UserDetail = () => {
 							<p className="text-sm text-muted-foreground">{user.email}</p>
 						</div>
 					</div>
-					<div
-						className="border-t"
-						style={{ borderColor: "var(--color-border)" }}>
+					<div className="border-t border-border">
 						<dl className="striped sm:grid">
 							<div className="px-4 py-5 sm:px-6">
 								<dt>Full Name</dt>
@@ -147,21 +145,7 @@ const UserDetail = () => {
 
 				{/* Back Button */}
 				<div className="mt-6">
-					<Button onClick={() => navigate("/users")}>
-						<svg
-							className="w-4 h-4 mr-2"
-							fill="none"
-							stroke="currentColor"
-							viewBox="0 0 24 24">
-							<path
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								strokeWidth={2}
-								d="M15 19l-7-7 7-7"
-							/>
-						</svg>
-						Back to Users List
-					</Button>
+					<BackButton to="/users">Back to Users List</BackButton>
 				</div>
 			</div>
 		</div>

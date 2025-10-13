@@ -95,13 +95,9 @@ const AccessPermissions = () => {
 						</div>
 					)}
 
-					<div
-						className="border-t"
-						style={{ borderColor: "var(--color-border)" }}>
+					<div className="border-t border-border">
 						{permissions.length > 0 ? (
-							<ul
-								className="divide-y"
-								style={{ borderColor: "var(--color-border)" }}>
+							<ul className="divide-y">
 								{permissions.map((permission) => (
 									<li key={permission.id}>
 										<div

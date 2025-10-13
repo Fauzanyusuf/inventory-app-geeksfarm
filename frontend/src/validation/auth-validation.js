@@ -25,8 +25,13 @@ export const registerUserSchema = z
 				message: "Invalid phone number format",
 			}),
 		sex: z
-			.string()
-			.transform((val) => (val === "" ? undefined : val))
+			.union([z.string(), z.null(), z.undefined()])
+			.transform((val) => {
+				if (val === "" || val === null || val === undefined || val === "NONE") {
+					return undefined;
+				}
+				return val;
+			})
 			.optional()
 			.refine((val) => !val || ["MALE", "FEMALE"].includes(val), {
 				message: "Sex must be either MALE or FEMALE",
