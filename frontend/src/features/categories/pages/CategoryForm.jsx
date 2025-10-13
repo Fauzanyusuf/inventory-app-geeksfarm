@@ -169,14 +169,18 @@ const CategoryForm = () => {
 				: "Category created successfully",
 			onSuccess: () => {
 				toastUtils.success(
-					isEdit ? "Kategori berhasil diperbarui!" : "Kategori berhasil dibuat!"
+					isEdit
+						? "Category updated successfully"
+						: "Category created successfully"
 				);
 				navigate("/categories");
 			},
 			onError: (error) => {
 				console.error("Form submission error:", error);
 				toastUtils.error(
-					isEdit ? "Gagal memperbarui kategori" : "Gagal membuat kategori"
+					isEdit
+						? "Failed to update category: " + error.message
+						: "Failed to create category: " + error.message
 				);
 			},
 		});

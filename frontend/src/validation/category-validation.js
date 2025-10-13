@@ -4,7 +4,8 @@ export const categoryCreateSchema = z.object({
 	name: z.string().min(1),
 	description: z
 		.string()
-		.transform((val) => (val === "" ? undefined : val))
+		.nullable()
+		.transform((val) => (val === "" || val === null ? undefined : val))
 		.optional(),
 });
 
@@ -12,6 +13,7 @@ export const categoryUpdateSchema = z.object({
 	name: z.string().min(1).optional(),
 	description: z
 		.string()
-		.transform((val) => (val === "" ? undefined : val))
+		.nullable()
+		.transform((val) => (val === "" || val === null ? undefined : val))
 		.optional(),
 });

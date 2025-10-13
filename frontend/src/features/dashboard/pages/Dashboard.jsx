@@ -44,6 +44,8 @@ const Dashboard = () => {
 
 	// Fetch dashboard statistics
 	useEffect(() => {
+		const controller = new AbortController();
+
 		const fetchStats = async () => {
 			try {
 				setStats((prev) => ({ ...prev, loading: true, error: null }));
@@ -55,6 +57,9 @@ const Dashboard = () => {
 						usersApi.getUsers({ limit: 0 }),
 						auditLogsApi.getAuditLogs({ limit: 0 }),
 					]);
+
+				// Check if component is still mounted
+				if (controller.signal.aborted) return;
 
 				setStats({
 					totalProducts:
@@ -73,16 +78,21 @@ const Dashboard = () => {
 					error: null,
 				});
 			} catch (error) {
-				console.error("Failed to fetch dashboard stats:", error);
-				setStats((prev) => ({
-					...prev,
-					loading: false,
-					error: "Failed to load statistics",
-				}));
+				// Only update state if component is still mounted
+				if (!controller.signal.aborted) {
+					console.error("Failed to fetch dashboard stats:", error);
+					setStats((prev) => ({
+						...prev,
+						loading: false,
+						error: "Failed to load statistics",
+					}));
+				}
 			}
 		};
 
 		fetchStats();
+
+		return () => controller.abort();
 	}, []);
 
 	const dashboardCards = [

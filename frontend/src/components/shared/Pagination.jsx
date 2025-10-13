@@ -136,7 +136,7 @@ const Pagination = ({
 
 						{/* Page numbers */}
 						{pageNumbers.map((page, index) => (
-							<PaginationItem key={index}>
+							<PaginationItem key={`page-${page}-${index}`}>
 								{page === "ellipsis-start" || page === "ellipsis-end" ? (
 									<PaginationEllipsis />
 								) : (

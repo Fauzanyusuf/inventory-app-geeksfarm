@@ -1,6 +1,7 @@
 import { ApiError, parseErrorBody } from "@/utils/apiError";
 
-const API_BASE_URL = "http://localhost:4000/api";
+const API_BASE_URL =
+	import.meta.env.VITE_API_URL || "http://localhost:4000/api";
 
 const getAuthHeaders = () => {
 	const token = localStorage.getItem("token");
@@ -12,7 +13,31 @@ const getAuthHeaders = () => {
 
 const inFlightRequests = new Map();
 const responseCache = new Map();
-const CACHE_TTL_MS = 2000;
+const CACHE_TTL_MS = parseInt(import.meta.env.VITE_CACHE_TTL_MS) || 2000;
+
+let cleanupInterval = null;
+
+const startCacheCleanup = () => {
+	if (cleanupInterval) return;
+
+	cleanupInterval = setInterval(() => {
+		const now = Date.now();
+		for (const [key, value] of responseCache.entries()) {
+			if (value.expiresAt <= now) {
+				responseCache.delete(key);
+			}
+		}
+	}, 60000);
+};
+
+const stopCacheCleanup = () => {
+	if (cleanupInterval) {
+		clearInterval(cleanupInterval);
+		cleanupInterval = null;
+	}
+};
+
+startCacheCleanup();
 
 const clearCacheForPrefix = (endpointPrefix) => {
 	const prefix = `GET:${API_BASE_URL}${endpointPrefix}`;
@@ -106,7 +131,6 @@ const apiCall = async (endpoint, options = {}) => {
 			console.error("API call failed:", error);
 			if (error instanceof ApiError) throw error;
 
-			// Enhanced error handling for network issues
 			let message = "Network error";
 			if (error.name === "TypeError" && error.message.includes("fetch")) {
 				message =
@@ -201,7 +225,6 @@ const apiCallWithFormData = async (endpoint, formData, options = {}) => {
 		console.error("API call failed:", error);
 		if (error instanceof ApiError) throw error;
 
-		// Enhanced error handling for network issues
 		let message = "Network error";
 		if (error.name === "TypeError" && error.message.includes("fetch")) {
 			message =
@@ -445,6 +468,8 @@ export const clearAllCaches = () => {
 	responseCache.clear();
 	inFlightRequests.clear();
 };
+
+export { stopCacheCleanup };
 
 export const authApi = {
 	logout: () =>

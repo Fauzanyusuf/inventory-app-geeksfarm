@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ApiError } from "@/utils/apiError";
@@ -12,12 +12,11 @@ export const useFormHandler = (schema, options = {}) => {
 		normalizeData = true,
 	} = options;
 
-	// Form state
 	const [error, setError] = useState("");
 	const [success, setSuccess] = useState("");
 	const [loading, setLoading] = useState(false);
+	const timeoutRef = useRef(null);
 
-	// React Hook Form setup
 	const form = useForm({
 		resolver: zodResolver(schema),
 		defaultValues,
@@ -26,7 +25,6 @@ export const useFormHandler = (schema, options = {}) => {
 
 	const { handleSubmit, setValue, setError: setFieldError, reset } = form;
 
-	// Unified error handler
 	const handleError = useCallback(
 		(error, options = {}) => {
 			const { logError = true, fallbackMessage = "An error occurred" } =
@@ -37,7 +35,6 @@ export const useFormHandler = (schema, options = {}) => {
 			if (error instanceof ApiError) {
 				errorMessage = error.message;
 
-				// Handle field-specific errors
 				if (error.errors && error.errors.length > 0) {
 					const fieldErrorMap = {};
 					error.errors.forEach((err) => {
@@ -46,7 +43,6 @@ export const useFormHandler = (schema, options = {}) => {
 						}
 					});
 
-					// Set field errors
 					Object.entries(fieldErrorMap).forEach(([field, message]) => {
 						setFieldError(field, { type: "server", message });
 					});
@@ -65,7 +61,6 @@ export const useFormHandler = (schema, options = {}) => {
 		[setFieldError]
 	);
 
-	// Success handler
 	const handleSuccess = useCallback(
 		(message = "Operation completed successfully", options = {}) => {
 			const { resetForm = resetOnSuccess } = options;
@@ -78,15 +73,16 @@ export const useFormHandler = (schema, options = {}) => {
 				reset();
 			}
 
-			// Auto-clear success message after 3 seconds
-			setTimeout(() => {
+			if (timeoutRef.current) {
+				clearTimeout(timeoutRef.current);
+			}
+			timeoutRef.current = setTimeout(() => {
 				setSuccess("");
 			}, 3000);
 		},
 		[reset, resetOnSuccess]
 	);
 
-	// Form submission handler
 	const onSubmit = useCallback(
 		async (data, submitFn, options = {}) => {
 			const {
@@ -101,7 +97,6 @@ export const useFormHandler = (schema, options = {}) => {
 			setSuccess("");
 
 			try {
-				// Normalize data if needed
 				const processedData = normalize ? normalizeServerField(data) : data;
 
 				const result = await submitFn(processedData);
@@ -126,7 +121,6 @@ export const useFormHandler = (schema, options = {}) => {
 		[handleError, handleSuccess, normalizeData]
 	);
 
-	// Load data into form
 	const loadData = useCallback(
 		(data) => {
 			const normalizedData = normalizeData ? normalizeServerField(data) : data;
@@ -138,21 +132,26 @@ export const useFormHandler = (schema, options = {}) => {
 		[setValue, normalizeData]
 	);
 
-	// Clear form state
 	const clearState = useCallback(() => {
 		setError("");
 		setSuccess("");
 		setLoading(false);
 	}, []);
 
-	// Reset form and state
 	const resetForm = useCallback(() => {
 		reset();
 		clearState();
 	}, [reset, clearState]);
 
+	useEffect(() => {
+		return () => {
+			if (timeoutRef.current) {
+				clearTimeout(timeoutRef.current);
+			}
+		};
+	}, []);
+
 	return {
-		// Form methods
 		...form,
 		handleSubmit,
 		onSubmit,
@@ -160,7 +159,6 @@ export const useFormHandler = (schema, options = {}) => {
 		clearState,
 		resetForm,
 
-		// State
 		error,
 		success,
 		loading,
@@ -168,7 +166,6 @@ export const useFormHandler = (schema, options = {}) => {
 		setSuccess,
 		setLoading,
 
-		// Handlers
 		handleError,
 		handleSuccess,
 	};

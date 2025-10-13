@@ -8,7 +8,9 @@ const ResultContainerPlugin = ({ results = [] }) => {
 			<h3 className="result-title">Scan Results:</h3>
 			<ul className="result-list">
 				{results.map((result, index) => (
-					<li key={index} className="result-item">
+					<li
+						key={`result-${result.decodedText}-${index}`}
+						className="result-item">
 						<div className="result-text">
 							<strong>Result {index + 1}:</strong> {result.decodedText}
 						</div>

@@ -22,22 +22,28 @@ export const AuthProvider = ({ children }) => {
 	const [user, setUser] = useState(null);
 	const [token, setToken] = useState(localStorage.getItem("token"));
 	const [loading, setLoading] = useState(true);
-	// Refresh token helper (stable)
-	const refreshToken = useCallback(async () => {
+
+	const refreshToken = useCallback(async (signal) => {
 		try {
 			const res = await authApi.refresh();
+			if (signal?.aborted) return false;
+
 			const newToken = res.data?.accessToken;
 			if (newToken) {
 				localStorage.setItem("token", newToken);
 				setToken(newToken);
 				try {
-					// usersApi.getCurrentUser already returns `r.data || null`.
 					let me = await usersApi.getCurrentUser();
+					if (signal?.aborted) return false;
+
 					me = await enrichUserWithRole(me);
+					if (signal?.aborted) return false;
+
 					setUser(normalizeUser(me) || null);
 				} catch {
-					// If fetching user fails but refresh succeeded, mark as authenticated
-					setUser({ isAuthenticated: true });
+					if (!signal?.aborted) {
+						setUser({ isAuthenticated: true });
+					}
 				}
 				return true;
 			}
@@ -47,7 +53,6 @@ export const AuthProvider = ({ children }) => {
 		return false;
 	}, []);
 
-	// Helper function to enrich user with role details
 	const enrichUserWithRole = async (user) => {
 		if (!user?.role?.id || user.role.permissions?.length > 0) return user;
 		try {
@@ -60,20 +65,18 @@ export const AuthProvider = ({ children }) => {
 		}
 	};
 
-	// Normalize user object: ensure a flat `permissions` string[] exists
 	const normalizeUser = (rawUser) => {
 		if (!rawUser) return null;
-		// Keep the original user object shape. Permission checks will rely on
-		// role.permissions or roles[].permissions per team decision.
 		return { ...rawUser };
 	};
 
-	// On mount (and when token changes) try to refresh and resolve loading
 	useEffect(() => {
+		const controller = new AbortController();
 		let cancelled = false;
+
 		(async () => {
 			if (token) {
-				const ok = await refreshToken();
+				const ok = await refreshToken(controller.signal);
 				if (!ok && !cancelled) {
 					localStorage.removeItem("token");
 					setToken(null);
@@ -82,8 +85,10 @@ export const AuthProvider = ({ children }) => {
 			}
 			if (!cancelled) setLoading(false);
 		})();
+
 		return () => {
 			cancelled = true;
+			controller.abort();
 		};
 	}, [token, refreshToken]);
 
@@ -98,13 +103,11 @@ export const AuthProvider = ({ children }) => {
 			if (userData) {
 				setUser(normalizeUser(userData) || null);
 			} else {
-				// If login didn't return full user payload, fetch it and enrich role if needed
 				try {
 					let me = await usersApi.getCurrentUser();
 					me = await enrichUserWithRole(me);
 					setUser(normalizeUser(me) || null);
 				} catch {
-					// fallback: at least mark authenticated
 					setUser({ isAuthenticated: true });
 				}
 			}
@@ -135,27 +138,24 @@ export const AuthProvider = ({ children }) => {
 		}
 	}, []);
 
-	const logout = () => {
-		// Call backend logout endpoint if available (best-effort)
-		(async () => {
-			try {
-				await authApi.logout();
-			} catch {
-				// ignore network errors during logout
-			}
-			// Clear client auth state and caches
-			localStorage.removeItem("token");
-			setToken(null);
-			setUser(null);
-			try {
-				clearAllCaches();
-			} catch {
-				// ignore
-			}
-		})();
-	};
+	const logout = useCallback(async () => {
+		try {
+			await authApi.logout();
+		} catch (error) {
+			console.warn("Logout API call failed:", error);
+		}
 
-	// periodic refresh (optional): refresh every 15 minutes while logged in
+		localStorage.removeItem("token");
+		setToken(null);
+		setUser(null);
+
+		try {
+			clearAllCaches();
+		} catch (error) {
+			console.warn("Failed to clear caches:", error);
+		}
+	}, []);
+
 	useEffect(() => {
 		let handle;
 		if (token) {
@@ -177,7 +177,7 @@ export const AuthProvider = ({ children }) => {
 			refreshToken,
 			isAuthenticated: !!token,
 		}),
-		[user, token, loading, refreshToken, login, register]
+		[user, token, loading, refreshToken, login, register, logout]
 	);
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

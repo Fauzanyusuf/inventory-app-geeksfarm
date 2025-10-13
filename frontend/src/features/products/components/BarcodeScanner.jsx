@@ -1,4 +1,4 @@
-import { useState, Suspense, lazy } from "react";
+import { useState, Suspense, lazy, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 
 // Lazy-load heavy scanner and result components to avoid large initial bundle
@@ -12,6 +12,7 @@ const ResultContainerPlugin = lazy(() =>
 const BarcodeScanner = ({ onScanSuccess, onClose }) => {
 	const [decodedResults, setDecodedResults] = useState([]);
 	const [error, setError] = useState(null);
+	const timeoutRef = useRef(null);
 
 	const onNewScanResult = (decodedText, decodedResult) => {
 		setDecodedResults((prev) => [...prev, decodedResult]);
@@ -19,8 +20,13 @@ const BarcodeScanner = ({ onScanSuccess, onClose }) => {
 		// Call the success callback with the decoded text
 		onScanSuccess(decodedText);
 
+		// Clear any existing timeout
+		if (timeoutRef.current) {
+			clearTimeout(timeoutRef.current);
+		}
+
 		// Close modal after showing result for 1 second
-		setTimeout(() => {
+		timeoutRef.current = setTimeout(() => {
 			onClose();
 		}, 1000);
 	};
@@ -31,8 +37,21 @@ const BarcodeScanner = ({ onScanSuccess, onClose }) => {
 	};
 
 	const handleClose = () => {
+		// Clear timeout when manually closing
+		if (timeoutRef.current) {
+			clearTimeout(timeoutRef.current);
+		}
 		onClose();
 	};
+
+	// Cleanup timeout on unmount
+	useEffect(() => {
+		return () => {
+			if (timeoutRef.current) {
+				clearTimeout(timeoutRef.current);
+			}
+		};
+	}, []);
 
 	return (
 		<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]">

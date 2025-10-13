@@ -12,7 +12,7 @@ import { deleteImage, replaceOneToOneImage } from "./image-service.js";
 async function createCategory(data, file = null, userId = null) {
 	try {
 		const existing = await prisma.category.findFirst({
-			where: { name: data.name },
+			where: { name: data.name, isDeleted: false },
 		});
 
 		if (existing) {
@@ -161,6 +161,14 @@ async function updateCategory(id, data, userId = null) {
 
 		if (!oldRecord) {
 			throw new ResponseError(404, "Category not found");
+		}
+
+		const existing = await prisma.category.findFirst({
+			where: { name: data.name, isDeleted: false, id: { not: id } },
+		});
+
+		if (existing) {
+			throw new ResponseError(409, "Category name already exists");
 		}
 
 		const result = await prisma.$transaction(async (tx) => {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { accessPermissionsApi, rolesApi } from "@/services/api";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { Badge } from "@/components/ui/badge";
 
 const AccessPermissions = () => {
 	const [permissions, setPermissions] = useState([]);
@@ -135,18 +136,11 @@ const AccessPermissions = () => {
 												<div className="flex items-center space-x-2">
 													{permission.roles && permission.roles.length > 0 && (
 														<div className="flex flex-wrap gap-1 justify-end">
-															{permission.roles.slice(0, 2).map((role) => (
-																<span
-																	key={role.id}
-																	className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-popover text-popover-foreground">
+															{permission.roles.map((role) => (
+																<Badge key={role.id} variant="outline">
 																	{role.name}
-																</span>
+																</Badge>
 															))}
-															{permission.roles.length > 2 && (
-																<span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-popover text-popover-foreground">
-																	+{permission.roles.length - 2} more
-																</span>
-															)}
 														</div>
 													)}
 													<svg

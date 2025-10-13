@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -64,10 +64,10 @@ const ImageUpload = ({
 		return null;
 	};
 
-	const getFileList = () => {
+	const getFileList = useCallback(() => {
 		if (!value) return [];
 		return Array.isArray(value) ? value : [value];
-	};
+	}, [value]);
 
 	const removeFile = (index) => {
 		if (multiple && Array.isArray(value)) {
@@ -77,6 +77,13 @@ const ImageUpload = ({
 			onChange(null);
 		}
 	};
+
+	useEffect(() => {
+		const urls = getFileList()
+			.map((f) => getFilePreview(f))
+			.filter(Boolean);
+		return () => urls.forEach((url) => URL.revokeObjectURL(url));
+	}, [getFileList, value]);
 
 	return (
 		<div className={cn("space-y-4", className)}>
@@ -128,7 +135,7 @@ const ImageUpload = ({
 					<div className="space-y-2">
 						{getFileList().map((file, index) => (
 							<div
-								key={index}
+								key={`file-${file.name}-${file.size}-${index}`}
 								className="flex items-center gap-3 p-3 border rounded-lg">
 								{file.type.startsWith("image/") && (
 									<img
