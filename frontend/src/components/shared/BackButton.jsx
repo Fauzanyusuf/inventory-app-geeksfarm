@@ -1,24 +1,15 @@
-import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { ChevronLeftIcon } from "lucide-react";
 
 const BackButton = ({
-	to,
 	children,
 	className = "",
 	variant = "outline",
 	size = "default",
 	...props
 }) => {
-	const navigate = useNavigate();
-
 	const handleBack = () => {
-		if (to) {
-			navigate(to);
-		} else {
-			// Fallback to browser back if no specific route provided
-			window.history.back();
-		}
+		window.history.back();
 	};
 
 	return (

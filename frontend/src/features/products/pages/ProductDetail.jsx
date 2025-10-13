@@ -582,7 +582,7 @@ const ProductDetail = () => {
 
 			{/* Back Button */}
 			<div className="mt-6">
-				<BackButton to="/dashboard">Back to Products</BackButton>
+				<BackButton>Back to Products</BackButton>
 			</div>
 		</div>
 	);

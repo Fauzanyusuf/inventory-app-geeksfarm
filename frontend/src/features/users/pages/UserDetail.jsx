@@ -142,11 +142,10 @@ const UserDetail = () => {
 						</dl>
 					</div>
 				</div>
-
-				{/* Back Button */}
-				<div className="mt-6">
-					<BackButton to="/users">Back to Users List</BackButton>
-				</div>
+			</div>
+			{/* Back Button */}
+			<div className="mt-6">
+				<BackButton>Back to Users List</BackButton>
 			</div>
 		</div>
 	);

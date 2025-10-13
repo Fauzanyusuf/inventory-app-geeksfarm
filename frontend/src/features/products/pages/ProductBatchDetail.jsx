@@ -367,9 +367,7 @@ const ProductBatchDetail = () => {
 
 				{/* Back Button */}
 				<div className="mt-6">
-					<BackButton to={`/products/${productId}`}>
-						Back to Product Detail
-					</BackButton>
+					<BackButton>Back to Product Detail</BackButton>
 				</div>
 			</main>
 		</div>

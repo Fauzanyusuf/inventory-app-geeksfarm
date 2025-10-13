@@ -392,7 +392,7 @@ const CategoryDetail = () => {
 
 				{/* Back Button */}
 				<div className="mt-6">
-					<BackButton to="/categories">Back to Categories List</BackButton>
+					<BackButton>Back to Categories List</BackButton>
 				</div>
 			</main>
 		</div>

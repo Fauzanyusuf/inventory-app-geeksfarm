@@ -227,7 +227,7 @@ const AccessPermissionDetail = () => {
 
 				{/* Back Button */}
 				<div className="mt-6">
-					<BackButton to="/permissions">Back to Permissions List</BackButton>
+					<BackButton>Back to Permissions List</BackButton>
 				</div>
 			</div>
 		</main>
