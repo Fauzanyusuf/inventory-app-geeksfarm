@@ -60,7 +60,8 @@ async function createCategory(data, file = null, userId = null) {
 
 async function listCategories({ page = 1, limit = 10, search }) {
 	try {
-		const skip = (page - 1) * limit;
+		const skip = limit === 0 ? 0 : (page - 1) * limit;
+		const take = limit === 0 ? undefined : limit;
 		const where = { isDeleted: false };
 
 		if (search) {
@@ -71,7 +72,7 @@ async function listCategories({ page = 1, limit = 10, search }) {
 			prisma.category.findMany({
 				where,
 				skip,
-				take: limit,
+				take,
 				orderBy: { name: "asc" },
 				select: {
 					id: true,
@@ -85,7 +86,7 @@ async function listCategories({ page = 1, limit = 10, search }) {
 			prisma.category.count({ where }),
 		]);
 
-		const totalPages = Math.ceil(total / limit) || 1;
+		const totalPages = limit === 0 ? 1 : Math.ceil(total / limit) || 1;
 
 		const converted = categories.map((c) => {
 			if (c.image) c.image = absoluteImageObject(c.image);

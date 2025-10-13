@@ -174,14 +174,10 @@ const ProductEditor = ({ mode = "create", productId = null, onSuccess }) => {
 		};
 
 		await onSubmit(values, submitFn, {
+			successMessage: isEdit
+				? "Product updated successfully!"
+				: "Product created successfully!",
 			onSuccess: () => {
-				// Show toast notification for successful submission
-				toastUtils.success(
-					isEdit
-						? "Product updated successfully!"
-						: "Product created successfully!"
-				);
-
 				if (onSuccess) onSuccess();
 			},
 			onError: (error) => {

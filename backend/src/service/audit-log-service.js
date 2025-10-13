@@ -12,7 +12,8 @@ async function listAuditLogs({
 	endDate,
 }) {
 	try {
-		const skip = (page - 1) * limit;
+		const skip = limit === 0 ? 0 : (page - 1) * limit;
+		const take = limit === 0 ? undefined : limit;
 		const where = {};
 
 		if (entity) {
@@ -40,7 +41,7 @@ async function listAuditLogs({
 			prisma.auditLog.findMany({
 				where,
 				skip,
-				take: limit,
+				take,
 				orderBy: { createdAt: "desc" },
 				select: {
 					id: true,
@@ -58,7 +59,7 @@ async function listAuditLogs({
 			prisma.auditLog.count({ where }),
 		]);
 
-		const totalPages = Math.ceil(total / limit);
+		const totalPages = limit === 0 ? 1 : Math.ceil(total / limit) || 1;
 
 		logger.info(
 			`Audit logs listed: ${auditLogs.length} items, page ${page}/${totalPages}`

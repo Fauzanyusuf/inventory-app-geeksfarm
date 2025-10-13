@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { toastUtils } from "@/hooks/useToast";
 
 const ProductDetail = () => {
 	const [product, setProduct] = useState(null);
@@ -182,6 +183,7 @@ const ProductDetail = () => {
 	}, [cleanup]);
 
 	const handleEditSuccess = async () => {
+		toastUtils.success("Product updated successfully!");
 		setShowEditor(false);
 		await fetchProductDetails();
 	};

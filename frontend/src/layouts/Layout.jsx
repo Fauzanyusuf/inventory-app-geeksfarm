@@ -34,7 +34,6 @@ import {
 	FileText,
 	Shield,
 	ShoppingCart,
-	QrCode,
 	LogOut,
 	User,
 } from "lucide-react";
@@ -106,15 +105,6 @@ const Layout = () => {
 											isActive={isActive("/dashboard")}>
 											<LayoutDashboard className="h-4 w-4" />
 											<span>Dashboard</span>
-										</SidebarMenuButton>
-									</SidebarMenuItem>
-
-									<SidebarMenuItem>
-										<SidebarMenuButton
-											onClick={() => goTo("/scan")}
-											isActive={isActive("/scan")}>
-											<QrCode className="h-4 w-4" />
-											<span>Scan Barcode</span>
 										</SidebarMenuButton>
 									</SidebarMenuItem>
 								</SidebarMenu>

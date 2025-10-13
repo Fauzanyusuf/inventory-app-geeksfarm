@@ -173,8 +173,8 @@ async function listProducts(filters = {}) {
 		const orderBy = {};
 		orderBy[sortBy] = sortOrder;
 
-		const skip = (page - 1) * limit;
-		const take = limit;
+		const skip = limit === 0 ? 0 : (page - 1) * limit;
+		const take = limit === 0 ? undefined : limit;
 
 		const [products, total] = await Promise.all([
 			prisma.product.findMany({
@@ -217,7 +217,7 @@ async function listProducts(filters = {}) {
 			return { ...result, totalQuantity };
 		});
 
-		const totalPages = Math.ceil(total / limit) || 1;
+		const totalPages = limit === 0 ? 1 : Math.ceil(total / limit) || 1;
 
 		logger.info(`Listed products: page ${page}, total ${total}`);
 
