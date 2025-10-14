@@ -9,11 +9,7 @@ import { winstonMorgan } from "./logging.js";
 export const app = express();
 app.use(
 	cors({
-		origin: [
-			"http://localhost:5173",
-			"https://frontend-inventory-app-fauzan-yusufs-projects.vercel.app",
-			"https://frontend-inventory-app-sage.vercel.app",
-		],
+		origin: ["http://localhost:5173", "https://geekscamp-inventory.vercel.app"],
 		credentials: true,
 	})
 );
