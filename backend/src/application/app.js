@@ -12,6 +12,7 @@ app.use(
 		origin: [
 			"http://localhost:5173",
 			"https://frontend-inventory-app-fauzan-yusufs-projects.vercel.app",
+			"https://frontend-inventory-app-sage.vercel.app",
 		],
 		credentials: true,
 	})
