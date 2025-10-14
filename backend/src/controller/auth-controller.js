@@ -1,84 +1,94 @@
 import { validate } from "../validation/validate.js";
 import {
-  loginAuthSchema,
-  registerUserSchema,
+	loginAuthSchema,
+	registerUserSchema,
 } from "../validation/auth-validation.js";
 import authService from "../service/auth-service.js";
 import { logger } from "../application/logging.js";
 import { validateImageFile } from "../utils/image-utils.js";
 
 async function register(req, res, next) {
-  try {
-    const data = validate(registerUserSchema, req.body);
+	try {
+		const data = validate(registerUserSchema, req.body);
 
-    let file = null;
-    if (req.file) {
-      file = validateImageFile(req.file);
-    }
+		let file = null;
+		if (req.file) {
+			file = validateImageFile(req.file);
+		}
 
-    const result = await authService.register(data, file || null);
+		const result = await authService.register(data, file || null);
 
-    logger.info(
-      `New user registered: ${result.user.email}, image: ${file ? "yes" : "no"}`
-    );
+		logger.info(
+			`New user registered: ${result.user.email}, image: ${file ? "yes" : "no"}`
+		);
 
-    res.status(201).json({
-      data: { ...result.user, image: result.image },
-      message: "User registered. Awaiting admin approval.",
-    });
-  } catch (err) {
-    next(err);
-  }
+		res.status(201).json({
+			data: { ...result.user, image: result.image },
+			message: "User registered. Awaiting admin approval.",
+		});
+	} catch (err) {
+		next(err);
+	}
 }
 
 async function login(req, res, next) {
-  try {
-    const data = validate(loginAuthSchema, req.body);
-    const { accessToken, refreshToken, cookieOptions } =
-      await authService.login(data);
+	try {
+		const data = validate(loginAuthSchema, req.body);
+		const { accessToken, refreshToken, cookieOptions } =
+			await authService.login(data);
 
-    res.cookie("refreshToken", refreshToken, cookieOptions);
+		res.cookie("refreshToken", refreshToken, cookieOptions);
 
-    res.status(200).json({
-      data: {
-        accessToken,
-      },
-      message: "Logged in",
-    });
-  } catch (err) {
-    next(err);
-  }
+		res.status(200).json({
+			data: {
+				accessToken,
+			},
+			message: "Logged in",
+		});
+	} catch (err) {
+		next(err);
+	}
 }
 
 async function refresh(req, res, next) {
-  try {
-    const token = req.cookies?.refreshToken;
+	try {
+		const token =
+			req.cookies?.refreshToken ||
+			req.headers.authorization?.replace("Bearer ", "") ||
+			req.body?.refreshToken;
 
-    const accessToken = await authService.refresh(token);
+		const accessToken = await authService.refresh(token);
 
-    res.status(200).json({ data: { accessToken }, message: "Token refreshed" });
-  } catch (err) {
-    next(err);
-  }
+		res.status(200).json({ data: { accessToken }, message: "Token refreshed" });
+	} catch (err) {
+		next(err);
+	}
 }
 
 async function logout(req, res, next) {
-  try {
-    const token = req.cookies?.refreshToken;
+	try {
+		const token =
+			req.cookies?.refreshToken ||
+			req.headers.authorization?.replace("Bearer ", "") ||
+			req.body?.refreshToken;
 
-    await authService.logout(token);
+		await authService.logout(token);
 
-    res.clearCookie("refreshToken", { httpOnly: true, sameSite: "lax" });
+		res.clearCookie("refreshToken", {
+			httpOnly: true,
+			sameSite: "none",
+			secure: process.env.NODE_ENV === "production",
+		});
 
-    res.status(200).json({ message: "Logged out" });
-  } catch (err) {
-    next(err);
-  }
+		res.status(200).json({ message: "Logged out" });
+	} catch (err) {
+		next(err);
+	}
 }
 
 export default {
-  register,
-  login,
-  refresh,
-  logout,
+	register,
+	login,
+	refresh,
+	logout,
 };
