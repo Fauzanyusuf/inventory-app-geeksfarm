@@ -76,7 +76,7 @@ const Register = () => {
 	};
 
 	return (
-		<div className="bg-muted flex min-h-dvh w-full items-center justify-center p-6 md:p-10">
+		<div className="bg-muted flex min-h-dvh h-full w-full items-center justify-center p-6 md:p-10">
 			<div className="w-full max-w-sm md:max-w-2xl">
 				<Card>
 					<CardHeader className="flex flex-col items-center gap-2 text-center">

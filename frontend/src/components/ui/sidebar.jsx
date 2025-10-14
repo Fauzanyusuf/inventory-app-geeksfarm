@@ -154,7 +154,7 @@ function SidebarProvider({
 						...style,
 					}}
 					className={cn(
-						"group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex min-h-dvh w-full",
+						"group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex min-h-dvh h-full w-full",
 						className
 					)}
 					{...props}>
@@ -180,7 +180,7 @@ function Sidebar({
 			<div
 				data-slot="sidebar"
 				className={cn(
-					"bg-sidebar text-sidebar-foreground flex h-full w-(--sidebar-width) flex-col",
+					"bg-sidebar text-sidebar-foreground flex h-full w-(--sidebar-width) flex-col min-h-dvh",
 					className
 				)}
 				{...props}>
