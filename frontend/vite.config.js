@@ -10,31 +10,15 @@ const __dirname = dirname(__filename);
 export default defineConfig({
 	plugins: [
 		tailwindcss(),
-		react(),
-		// {
-		// babel: {
-		//   plugins: [["babel-plugin-react-compiler"]],
-		// },
-
-		// }
+		react({
+			babel: {
+				plugins: [["babel-plugin-react-compiler"]],
+			},
+		}),
 	],
 	resolve: {
 		alias: {
 			"@": resolve(__dirname, "./src"),
 		},
-	},
-	build: {
-		rollupOptions: {
-			output: {
-				manualChunks(id) {
-					if (!id.includes("node_modules")) return;
-					if (id.includes("node_modules/react-dom")) return "react-dom";
-					if (id.includes("node_modules/react")) return "react";
-					const match = id.match(/node_modules\/([^/]+)\/?.*/);
-					if (match && match[1]) return `pkg-${match[1]}`;
-				},
-			},
-		},
-		chunkSizeWarningLimit: 700,
 	},
 });
