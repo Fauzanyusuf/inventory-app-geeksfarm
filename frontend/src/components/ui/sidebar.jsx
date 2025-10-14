@@ -2,6 +2,7 @@ import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva } from "class-variance-authority";
 import { PanelLeftIcon } from "lucide-react";
+import { useLocation } from "react-router";
 
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -41,16 +42,31 @@ function useSidebar() {
 	return context;
 }
 
+// Custom hook for auto-collapse functionality
+function useAutoCollapseSidebar() {
+	const { isMobile, setOpenMobile } = useSidebar();
+
+	const collapseOnMobile = React.useCallback(() => {
+		if (isMobile) {
+			setOpenMobile(false);
+		}
+	}, [isMobile, setOpenMobile]);
+
+	return { collapseOnMobile };
+}
+
 function SidebarProvider({
 	defaultOpen = true,
 	open: openProp,
 	onOpenChange: setOpenProp,
+	autoCollapseOnMobile = true,
 	className,
 	style,
 	children,
 	...props
 }) {
 	const isMobile = useIsMobile();
+	const location = useLocation();
 	const [openMobile, setOpenMobile] = React.useState(false);
 
 	// This is the internal state of the sidebar.
@@ -71,6 +87,13 @@ function SidebarProvider({
 		},
 		[setOpenProp, open]
 	);
+
+	// Auto-collapse sidebar on mobile when route changes
+	React.useEffect(() => {
+		if (autoCollapseOnMobile && isMobile) {
+			setOpenMobile(false);
+		}
+	}, [location.pathname, autoCollapseOnMobile, isMobile]);
 
 	// Helper to toggle the sidebar.
 	const toggleSidebar = React.useCallback(() => {
@@ -106,8 +129,9 @@ function SidebarProvider({
 			openMobile,
 			setOpenMobile,
 			toggleSidebar,
+			autoCollapseOnMobile,
 		}),
-		[state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
+		[state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar, autoCollapseOnMobile]
 	);
 
 	return (
@@ -645,4 +669,5 @@ export {
 	SidebarSeparator,
 	SidebarTrigger,
 	useSidebar,
+	useAutoCollapseSidebar,
 };

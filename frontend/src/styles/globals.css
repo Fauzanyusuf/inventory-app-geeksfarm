@@ -329,7 +329,7 @@ body {
 	}
 
 	.page-header-content {
-		@apply px-6 py-4 border-border flex items-center justify-between;
+		@apply px-6 py-4 border-border flex gap-4 flex-col md:flex-row items-center justify-between;
 	}
 
 	.page-title {
