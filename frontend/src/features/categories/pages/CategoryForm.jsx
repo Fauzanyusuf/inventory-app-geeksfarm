@@ -21,7 +21,6 @@ const CategoryForm = () => {
 	const isEdit = Boolean(id);
 	const schema = isEdit ? categoryUpdateSchema : categoryCreateSchema;
 
-	// Use unified form handler
 	const {
 		register,
 		handleSubmit,
@@ -38,7 +37,6 @@ const CategoryForm = () => {
 
 	const { errors: rhfErrors } = formState;
 
-	// Image state (specific to this form)
 	const [imageFile, setImageFile] = useState(null);
 	const [imagePreview, setImagePreview] = useState(null);
 	const [currentImageUrl, setCurrentImageUrl] = useState(null);
@@ -52,7 +50,6 @@ const CategoryForm = () => {
 					const category =
 						response && response.data !== undefined ? response.data : response;
 
-					// Load form data using unified handler
 					loadData(category);
 
 					const imageResponse = await categoriesApi.getCategoryImage(id);
@@ -61,7 +58,6 @@ const CategoryForm = () => {
 					}
 				} catch (err) {
 					console.error("Failed to fetch category:", err);
-					// Error will be handled by useFormHandler
 				}
 			};
 			fetchCategory();

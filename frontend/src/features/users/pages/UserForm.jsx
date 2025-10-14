@@ -20,7 +20,6 @@ const UserForm = () => {
 	const { refreshToken } = useAuth();
 	const confirm = useConfirm();
 
-	// Use unified form handler
 	const {
 		register,
 		handleSubmit,
@@ -33,10 +32,8 @@ const UserForm = () => {
 		resetOnSuccess: false,
 	});
 
-	// Upload success state (specific to this form)
 	const [, setUploadSuccess] = useState("");
 
-	// Custom hooks for data management
 	const {
 		user,
 		loading: userLoading,
@@ -56,7 +53,6 @@ const UserForm = () => {
 
 	const rhfErrors = formState.errors;
 
-	// Handle user data loading errors
 	useEffect(() => {
 		if (userError) {
 			setFormError(userError);
@@ -150,7 +146,6 @@ const UserForm = () => {
 									/>
 								</div>
 
-								{/* Profile image */}
 								<div>
 									<Label className="block text-sm font-medium text-muted-foreground">
 										Profile photo

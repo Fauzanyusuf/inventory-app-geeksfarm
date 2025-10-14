@@ -184,7 +184,7 @@ const CategoriesList = () => {
 			{meta && validated && (
 				<div className="mt-6">
 					<Pagination
-						currentPage={validated.page || 1}
+						currentPage={meta.page || 1}
 						totalPages={totalPages}
 						totalItems={meta.total || meta.totalItems || categories.length}
 						pageSize={validated.limit || 20}

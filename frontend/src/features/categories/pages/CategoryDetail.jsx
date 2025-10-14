@@ -8,8 +8,6 @@ import { hasPermission } from "@/utils/permissions";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { BackButton } from "@/components/shared";
 
-// InPageBanner removed: detail pages now redirect to dashboard on fetch errors
-
 const useCategoryData = (id) => {
 	const [category, setCategory] = useState(null);
 	const [categoryImage, setCategoryImage] = useState(null);
@@ -130,7 +128,6 @@ const CategoryDetail = () => {
 		error: productsError,
 	} = useProductsWithImages(id, category);
 
-	// If category fetch failed or category is missing, redirect to dashboard
 	useEffect(() => {
 		if (!categoryLoading && (categoryError || !category)) {
 			navigate("/dashboard");
@@ -175,7 +172,6 @@ const CategoryDetail = () => {
 
 	return (
 		<div className="page-container">
-			{/* Main Content */}
 			<main className="form-container">
 				<div>
 					<div className="page-content">
@@ -267,7 +263,6 @@ const CategoryDetail = () => {
 						</div>
 					</div>
 
-					{/* Products in this Category */}
 					<div className="mt-6">
 						<div className="page-content">
 							<div className="page-content-header">
@@ -390,7 +385,6 @@ const CategoryDetail = () => {
 					</div>
 				</div>
 
-				{/* Back Button */}
 				<div className="mt-6">
 					<BackButton>Back to Categories List</BackButton>
 				</div>

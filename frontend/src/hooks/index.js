@@ -4,9 +4,6 @@
 // Form handling
 export { useFormHandler } from "./useFormHandler";
 
-// Error handling
-export { useErrorHandler } from "./useErrorHandler";
-
 // UI interactions
 export { useDebounce } from "./useDebounce";
 export { useIsMobile } from "./use-mobile";
