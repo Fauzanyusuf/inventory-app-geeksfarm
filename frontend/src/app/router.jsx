@@ -239,7 +239,7 @@ const router = createBrowserRouter([
 					},
 				],
 			},
-			{ path: "*", element: <Navigate to="/" replace /> }, // Redirect semua route yang tidak ditemukan ke "/"
+			{ path: "*", element: <Navigate to="/" replace /> },
 		],
 	},
 ]);

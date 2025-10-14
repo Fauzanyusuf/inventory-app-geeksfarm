@@ -2,6 +2,7 @@ import { Outlet, useNavigate, useLocation } from "react-router";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { hasPermission } from "@/utils/permissions";
 import {
+	useSidebar,
 	Sidebar,
 	SidebarContent,
 	SidebarFooter,
@@ -44,6 +45,7 @@ const Layout = () => {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const { imageUrl } = useImageUpload(user);
+	const { isMobile, setOpenMobile } = useSidebar();
 
 	const initials =
 		user && user.name
@@ -67,6 +69,9 @@ const Layout = () => {
 
 	const goTo = (path) => {
 		navigate(path);
+		if (isMobile) {
+			setOpenMobile(false);
+		}
 	};
 
 	const isActive = (path) => {
@@ -321,7 +326,7 @@ const Layout = () => {
 						<div className="flex items-center gap-4">
 							<SidebarTrigger />
 							<Separator orientation="vertical" className="mr-2 h-4" />
-							<h1 className="text-lg font-semibold">
+							<h1 className="text-sm md:text-lg font-semibold">
 								{location.pathname === "/" || location.pathname === "/dashboard"
 									? "Inventory Management System"
 									: location.pathname === "/products"
