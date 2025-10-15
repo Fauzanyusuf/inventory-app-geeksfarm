@@ -7,6 +7,7 @@ import { formatDate, formatPrice } from "@/utils/format";
 import { hasPermission } from "@/utils/permissions";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { BackButton } from "@/components/shared";
+import { Button } from "@/components/ui/button";
 
 const useCategoryData = (id) => {
 	const [category, setCategory] = useState(null);
@@ -185,9 +186,7 @@ const CategoryDetail = () => {
 								</div>
 								{hasPermission(user, "product:manage") && category && (
 									<div className="flex space-x-3">
-										<button
-											onClick={handleEdit}
-											className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+										<Button onClick={handleEdit} title="Edit category">
 											<svg
 												className="w-4 h-4 mr-2"
 												fill="none"
@@ -201,10 +200,11 @@ const CategoryDetail = () => {
 												/>
 											</svg>
 											Edit
-										</button>
-										<button
+										</Button>
+										<Button
 											onClick={handleDelete}
-											className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+											variant="destructive"
+											title="Delete category">
 											<svg
 												className="w-4 h-4 mr-2"
 												fill="none"
@@ -218,7 +218,7 @@ const CategoryDetail = () => {
 												/>
 											</svg>
 											Delete
-										</button>
+										</Button>
 									</div>
 								)}
 							</div>

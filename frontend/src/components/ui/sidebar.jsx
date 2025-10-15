@@ -281,7 +281,7 @@ function SidebarRail({ className, ...props }) {
 	const { toggleSidebar } = useSidebar();
 
 	return (
-		<button
+		<Button
 			data-sidebar="rail"
 			data-slot="sidebar-rail"
 			aria-label="Toggle Sidebar"
@@ -297,8 +297,9 @@ function SidebarRail({ className, ...props }) {
 				"[[data-side=right][data-collapsible=offcanvas]_&]:-left-2",
 				className
 			)}
-			{...props}
-		/>
+			{...props}>
+			<span className="sr-only">Toggle Sidebar</span>
+		</Button>
 	);
 }
 

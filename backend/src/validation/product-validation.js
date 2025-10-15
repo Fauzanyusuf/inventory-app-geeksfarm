@@ -116,6 +116,9 @@ export const productListQuerySchema = z.object({
 		(val) => (val === "" ? undefined : val),
 		z.coerce.number().nonnegative().optional()
 	),
-	sortBy: z.enum(["sellingPrice", "name"]).optional().default("name"),
+	sortBy: z
+		.enum(["sellingPrice", "name", "best_selling", "newly_released", "newest"])
+		.optional()
+		.default("name"),
 	sortOrder: z.enum(["asc", "desc"]).optional().default("asc"),
 });

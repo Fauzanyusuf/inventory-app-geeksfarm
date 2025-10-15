@@ -22,6 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toastUtils } from "@/hooks/useToast";
+import { XIcon } from "lucide-react";
 
 const ProductDetail = () => {
 	const [product, setProduct] = useState(null);
@@ -313,7 +314,7 @@ const ProductDetail = () => {
 																}}
 																variant="destructive"
 																size="sm"
-																className={`absolute top-0 right-0 rounded-full px-1.5 ${
+																className={`absolute -top-2 -right-2 w-6 h-6 rounded-full p-0 ${
 																	deletingImageIds.includes(img.id)
 																		? "opacity-60 cursor-not-allowed pointer-events-none"
 																		: "hover:opacity-90"
@@ -327,7 +328,7 @@ const ProductDetail = () => {
 																{deletingImageIds.includes(img.id) ? (
 																	<LoadingSpinner size="sm" />
 																) : (
-																	"×"
+																	<XIcon className="w-3 h-3" />
 																)}
 															</Button>
 														)}
@@ -375,7 +376,7 @@ const ProductDetail = () => {
 																alt={p.name}
 																className="h-20 w-20 object-cover rounded"
 															/>
-															<button
+															<Button
 																type="button"
 																onClick={() => {
 																	try {
@@ -390,10 +391,12 @@ const ProductDetail = () => {
 																		prev.filter((_, i) => i !== idx)
 																	);
 																}}
-																className="absolute top-0 right-0 bg-destructive-foreground rounded-full p-1 text-destructive shadow"
+																variant="destructive"
+																size="sm"
+																className="absolute -top-2 -right-2 w-6 h-6 rounded-full p-0"
 																title="Remove">
-																×
-															</button>
+																<XIcon className="w-3 h-3" />
+															</Button>
 														</div>
 													))}
 												</div>

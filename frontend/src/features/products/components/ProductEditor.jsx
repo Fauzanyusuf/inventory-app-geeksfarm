@@ -230,12 +230,13 @@ const ProductEditor = ({ mode = "create", productId = null, onSuccess }) => {
 							<FormField
 								{...register("barcode")}
 								name="barcode"
-								className="flex-1 rounded-l-md"
+								className="flex-1 rounded-l-md rounded-r-none"
 								errors={rhfErrors}
 							/>
 							<Button
 								type="button"
 								variant="outline"
+								className="rounded-l-none rounded-r-md border-l-0 h-10"
 								onClick={() => setShowScanner(true)}>
 								Scan
 							</Button>
@@ -375,17 +376,6 @@ const ProductEditor = ({ mode = "create", productId = null, onSuccess }) => {
 							errors={getErrorFromRHF(rhfErrors, "categoryId")}
 						/>
 					</div>
-
-					{isEdit && (
-						<div className="flex items-center">
-							<Checkbox {...register("isActive")} id="isActive" />
-							<Label
-								htmlFor="isActive"
-								className="ml-2 block text-sm text-card-foreground">
-								Active
-							</Label>
-						</div>
-					)}
 
 					<div className="form-actions">
 						<Button type="submit" disabled={loading}>

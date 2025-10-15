@@ -18,6 +18,188 @@ function getBatchStatus(expiredAt, quantity) {
 		: "AVAILABLE";
 }
 
+async function buildSortingCriteria(sortBy, sortOrder, where) {
+	const orderBy = {};
+
+	switch (sortBy) {
+		case "best_selling": {
+			break;
+		}
+
+		case "newly_released": {
+			const sevenDaysAgo = new Date();
+			sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+			const recentProductsCount = await prisma.product.count({
+				where: { ...where, createdAt: { gte: sevenDaysAgo } },
+			});
+
+			if (recentProductsCount > 0) {
+				where.createdAt = { gte: sevenDaysAgo };
+			}
+			orderBy.createdAt = "desc";
+			break;
+		}
+
+		case "newest": {
+			orderBy.createdAt = "desc";
+			break;
+		}
+
+		default: {
+			orderBy[sortBy] = sortOrder;
+			break;
+		}
+	}
+
+	return { orderBy, where };
+}
+
+async function getBestSellingProducts(where, skip, take) {
+	const allProducts = await prisma.product.findMany({
+		where,
+		select: {
+			id: true,
+			name: true,
+			barcode: true,
+			description: true,
+			sellingPrice: true,
+			unit: true,
+			category: { select: { id: true, name: true } },
+			images: { select: { id: true, url: true, thumbnailUrl: true } },
+			batches: {
+				where: { status: "AVAILABLE" },
+				select: { quantity: true },
+			},
+			stockMovements: {
+				where: { movementType: "OUT" },
+				select: { quantity: true },
+			},
+		},
+	});
+
+	// Calculate total sold for each product and sort
+	const productsWithSold = allProducts
+		.map((product) => {
+			const totalSold = product.stockMovements.reduce(
+				(sum, movement) => sum + movement.quantity,
+				0
+			);
+			// eslint-disable-next-line no-unused-vars
+			const { stockMovements, ...productWithoutMovements } = product;
+			return { ...productWithoutMovements, totalSold };
+		})
+		.sort((a, b) => b.totalSold - a.totalSold);
+
+	const total = productsWithSold.length;
+	const products = productsWithSold.slice(
+		skip,
+		skip + (take || productsWithSold.length)
+	);
+
+	return { products, total };
+}
+
+async function getRegularProducts(where, orderBy, skip, take) {
+	const [products, total] = await Promise.all([
+		prisma.product.findMany({
+			where,
+			orderBy,
+			skip,
+			take,
+			select: {
+				id: true,
+				name: true,
+				barcode: true,
+				description: true,
+				sellingPrice: true,
+				unit: true,
+				category: { select: { id: true, name: true } },
+				images: { select: { id: true, url: true, thumbnailUrl: true } },
+				batches: {
+					where: { status: "AVAILABLE" },
+					select: { quantity: true },
+				},
+			},
+		}),
+		prisma.product.count({ where }),
+	]);
+
+	return { products, total };
+}
+
+function processProducts(products) {
+	return products.map((product) => {
+		const totalQuantity = product.batches.reduce(
+			(sum, batch) => sum + batch.quantity,
+			0
+		);
+
+		// eslint-disable-next-line no-unused-vars
+		const { batches, ...result } = product;
+
+		if (result.images && Array.isArray(result.images)) {
+			result.images = result.images.map((img) => absoluteImageObject(img));
+		}
+
+		return { ...result, totalQuantity };
+	});
+}
+
+function distributeFilesEvenly(files, numProducts) {
+	if (!files || files.length === 0) return Array(numProducts).fill([]);
+
+	const result = [];
+	const baseCount = Math.floor(files.length / numProducts);
+	const remainder = files.length % numProducts;
+
+	let fileIndex = 0;
+	for (let i = 0; i < numProducts; i++) {
+		const count = baseCount + (i < remainder ? 1 : 0);
+		result.push(files.slice(fileIndex, fileIndex + count));
+		fileIndex += count;
+	}
+
+	return result;
+}
+
+function buildWhereClause({ search, category, minPrice, maxPrice }) {
+	const where = { isDeleted: false };
+	const and = [];
+
+	if (search) {
+		and.push({
+			OR: [
+				{ name: { contains: search, mode: "insensitive" } },
+				{ barcode: { contains: search, mode: "insensitive" } },
+			],
+		});
+	}
+
+	if (category) {
+		if (category === "no-category") {
+			and.push({ category: null });
+		} else {
+			and.push({
+				category: { name: { contains: category, mode: "insensitive" } },
+			});
+		}
+	}
+
+	if (typeof minPrice !== "undefined" || typeof maxPrice !== "undefined") {
+		const priceFilter = {};
+		if (typeof minPrice !== "undefined") priceFilter.gte = minPrice;
+		if (typeof maxPrice !== "undefined") priceFilter.lte = maxPrice;
+		and.push({ sellingPrice: priceFilter });
+	}
+
+	if (and.length) {
+		where.AND = and;
+	}
+
+	return where;
+}
+
 async function createProductWithBatch(
 	tx,
 	productData,
@@ -63,23 +245,6 @@ async function createProductWithBatch(
 	});
 
 	return { product, batch, movement };
-}
-
-function distributeFilesEvenly(files, numProducts) {
-	if (!files || files.length === 0) return Array(numProducts).fill([]);
-
-	const result = [];
-	const baseCount = Math.floor(files.length / numProducts);
-	const remainder = files.length % numProducts;
-
-	let fileIndex = 0;
-	for (let i = 0; i < numProducts; i++) {
-		const count = baseCount + (i < remainder ? 1 : 0);
-		result.push(files.slice(fileIndex, fileIndex + count));
-		fileIndex += count;
-	}
-
-	return result;
 }
 
 async function createSingleProduct(
@@ -135,94 +300,30 @@ async function listProducts(filters = {}) {
 			sortOrder = "asc",
 		} = filters;
 
-		const where = { isDeleted: false };
-		const and = [];
+		const where = buildWhereClause({ search, category, minPrice, maxPrice });
 
-		if (search) {
-			and.push({
-				OR: [
-					{ name: { contains: search, mode: "insensitive" } },
-					{ barcode: { contains: search, mode: "insensitive" } },
-				],
-			});
-		}
-
-		if (category) {
-			if (category === "no-category") {
-				and.push({
-					category: null,
-				});
-			} else {
-				and.push({
-					category: { name: { contains: category, mode: "insensitive" } },
-				});
-			}
-		}
-
-		if (typeof minPrice !== "undefined" || typeof maxPrice !== "undefined") {
-			const priceFilter = {};
-			if (typeof minPrice !== "undefined") priceFilter.gte = minPrice;
-			if (typeof maxPrice !== "undefined") priceFilter.lte = maxPrice;
-			and.push({ sellingPrice: priceFilter });
-		}
-
-		if (and.length) {
-			where.AND = and;
-		}
-
-		const orderBy = {};
-		orderBy[sortBy] = sortOrder;
+		const { orderBy, where: modifiedWhere } = await buildSortingCriteria(
+			sortBy,
+			sortOrder,
+			where
+		);
 
 		const skip = limit === 0 ? 0 : (page - 1) * limit;
 		const take = limit === 0 ? undefined : limit;
 
-		const [products, total] = await Promise.all([
-			prisma.product.findMany({
-				where,
-				orderBy,
-				skip,
-				take,
-				select: {
-					id: true,
-					name: true,
-					barcode: true,
-					description: true,
-					sellingPrice: true,
-					unit: true,
-					category: { select: { id: true, name: true } },
-					images: {
-						select: { id: true, url: true, thumbnailUrl: true },
-					},
-					batches: {
-						where: { status: "AVAILABLE" },
-						select: { quantity: true },
-					},
-				},
-			}),
-			prisma.product.count({ where }),
-		]);
+		const { products, total } =
+			sortBy === "best_selling"
+				? await getBestSellingProducts(modifiedWhere, skip, take)
+				: await getRegularProducts(modifiedWhere, orderBy, skip, take);
 
-		const productsWithQuantity = products.map((product) => {
-			const totalQuantity = product.batches.reduce(
-				(sum, batch) => sum + batch.quantity,
-				0
-			);
-
-			// eslint-disable-next-line no-unused-vars
-			const { batches, ...result } = product;
-
-			if (result.images && Array.isArray(result.images)) {
-				result.images = result.images.map((img) => absoluteImageObject(img));
-			}
-			return { ...result, totalQuantity };
-		});
+		const processedProducts = processProducts(products);
 
 		const totalPages = limit === 0 ? 1 : Math.ceil(total / limit) || 1;
 
 		logger.info(`Listed products: page ${page}, total ${total}`);
 
 		return {
-			items: productsWithQuantity,
+			items: processedProducts,
 			meta: { total, page, limit, totalPages },
 		};
 	} catch (err) {

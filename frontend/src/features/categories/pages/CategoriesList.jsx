@@ -88,32 +88,30 @@ const CategoriesList = () => {
 					<div
 						key={category.id}
 						onClick={() => handleCategoryClick(category.id)}
-						className="bg-card overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow duration-200 cursor-pointer border border-border">
-						<div className="p-6">
-							<div className="flex items-center">
-								<div className="flex-shrink-0">
-									<div className="w-10 h-10 bg-popover rounded-lg flex items-center justify-center">
-										{category.image ? (
-											<img
-												src={category.image.thumbnailUrl}
-												alt={category.name}
-												className="w-full h-full object-cover rounded-lg"
+						className="bg-card overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow duration-200 border border-border flex flex-col cursor-pointer">
+						<div className="p-6 flex-1">
+							<div className="flex items-start">
+								<div className="w-10 h-10 bg-popover rounded-lg flex justify-center items-center">
+									{category.image ? (
+										<img
+											src={category.image.thumbnailUrl}
+											alt={category.name}
+											className="w-full h-full object-cover rounded-lg"
+										/>
+									) : (
+										<svg
+											className="w-6 h-6 text-popover-foreground"
+											fill="none"
+											stroke="currentColor"
+											viewBox="0 0 24 24">
+											<path
+												strokeLinecap="round"
+												strokeLinejoin="round"
+												strokeWidth={2}
+												d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
 											/>
-										) : (
-											<svg
-												className="w-6 h-6 text-popover-foreground"
-												fill="none"
-												stroke="currentColor"
-												viewBox="0 0 24 24">
-												<path
-													strokeLinecap="round"
-													strokeLinejoin="round"
-													strokeWidth={2}
-													d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-												/>
-											</svg>
-										)}
-									</div>
+										</svg>
+									)}
 								</div>
 								<div className="ml-4 flex-1">
 									<h3 className="text-lg font-medium text-card-foreground">
@@ -125,18 +123,20 @@ const CategoriesList = () => {
 								</div>
 							</div>
 						</div>
-						<div className="bg-popover px-6 py-3">
+						<div className="bg-popover px-6 py-3 border-t border-border">
 							<div className="flex items-center justify-between">
 								<div className="text-sm text-popover-foreground">
 									Click to view details
 								</div>
 								{hasPermission(user, "product:manage") && (
-									<button
+									<Button
 										onClick={(e) => {
 											e.stopPropagation();
 											navigate(`/categories/${category.id}/edit`);
 										}}
-										className="inline-flex items-center px-2 py-1 text-xs font-medium rounded text-blue-600 hover:text-blue-800 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+										variant="outline"
+										size="sm"
+										className="h-7 px-2 text-xs">
 										<svg
 											className="w-3 h-3 mr-1"
 											fill="none"
@@ -150,7 +150,7 @@ const CategoriesList = () => {
 											/>
 										</svg>
 										Edit
-									</button>
+									</Button>
 								)}
 							</div>
 						</div>

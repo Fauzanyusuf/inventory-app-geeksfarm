@@ -233,88 +233,105 @@ const Dashboard = () => {
 					<p className="text-sm">{stats.error}</p>
 				</div>
 			) : (
-				<div className="mb-8">
-					<h2 className="text-xl font-semibold text-card-foreground mb-4">
-						System Overview
-					</h2>
-					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-						<Card
-							className="border-0 shadow-sm cursor-pointer transition-all duration-200 hover:shadow-md hover:scale-105"
-							onClick={() => handleCardClick("/products")}>
-							<CardContent className="p-4">
-								<div className="flex items-center justify-between">
-									<div>
-										<p className="text-sm text-muted-foreground">
-											Total Products
-										</p>
-										<p className="text-2xl font-bold text-blue-600">
-											{stats.totalProducts}
-										</p>
-									</div>
-									<div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-										<Package className="w-5 h-5 text-blue-600" />
-									</div>
-								</div>
-							</CardContent>
-						</Card>
+				// Only show System Overview if user has at least one permission to view statistics
+				(hasPermission(user, "product:read") ||
+					hasPermission(user, "user:read") ||
+					hasPermission(user, "user:manage")) && (
+					<div className="mb-8">
+						<h2 className="text-xl font-semibold text-card-foreground mb-4">
+							System Overview
+						</h2>
+						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+							{hasPermission(user, "product:read") && (
+								<Card
+									className="border-0 shadow-sm cursor-pointer transition-all duration-200 hover:shadow-md hover:scale-105"
+									onClick={() => handleCardClick("/products")}>
+									<CardContent className="p-4">
+										<div className="flex items-center justify-between">
+											<div>
+												<p className="text-sm text-muted-foreground">
+													Total Products
+												</p>
+												<p className="text-2xl font-bold text-blue-600">
+													{stats.totalProducts}
+												</p>
+											</div>
+											<div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+												<Package className="w-5 h-5 text-blue-600" />
+											</div>
+										</div>
+									</CardContent>
+								</Card>
+							)}
 
-						<Card
-							className="border-0 shadow-sm cursor-pointer transition-all duration-200 hover:shadow-md hover:scale-105"
-							onClick={() => handleCardClick("/categories")}>
-							<CardContent className="p-4">
-								<div className="flex items-center justify-between">
-									<div>
-										<p className="text-sm text-muted-foreground">
-											Total Categories
-										</p>
-										<p className="text-2xl font-bold text-green-600">
-											{stats.totalCategories}
-										</p>
-									</div>
-									<div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-										<Tags className="w-5 h-5 text-green-600" />
-									</div>
-								</div>
-							</CardContent>
-						</Card>
+							{hasPermission(user, "product:read") && (
+								<Card
+									className="border-0 shadow-sm cursor-pointer transition-all duration-200 hover:shadow-md hover:scale-105"
+									onClick={() => handleCardClick("/categories")}>
+									<CardContent className="p-4">
+										<div className="flex items-center justify-between">
+											<div>
+												<p className="text-sm text-muted-foreground">
+													Total Categories
+												</p>
+												<p className="text-2xl font-bold text-green-600">
+													{stats.totalCategories}
+												</p>
+											</div>
+											<div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+												<Tags className="w-5 h-5 text-green-600" />
+											</div>
+										</div>
+									</CardContent>
+								</Card>
+							)}
 
-						<Card
-							className="border-0 shadow-sm cursor-pointer transition-all duration-200 hover:shadow-md hover:scale-105"
-							onClick={() => handleCardClick("/users")}>
-							<CardContent className="p-4">
-								<div className="flex items-center justify-between">
-									<div>
-										<p className="text-sm text-muted-foreground">Total Users</p>
-										<p className="text-2xl font-bold text-purple-600">
-											{stats.totalUsers}
-										</p>
-									</div>
-									<div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-										<Users className="w-5 h-5 text-purple-600" />
-									</div>
-								</div>
-							</CardContent>
-						</Card>
+							{hasPermission(user, "user:read") && (
+								<Card
+									className="border-0 shadow-sm cursor-pointer transition-all duration-200 hover:shadow-md hover:scale-105"
+									onClick={() => handleCardClick("/users")}>
+									<CardContent className="p-4">
+										<div className="flex items-center justify-between">
+											<div>
+												<p className="text-sm text-muted-foreground">
+													Total Users
+												</p>
+												<p className="text-2xl font-bold text-purple-600">
+													{stats.totalUsers}
+												</p>
+											</div>
+											<div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+												<Users className="w-5 h-5 text-purple-600" />
+											</div>
+										</div>
+									</CardContent>
+								</Card>
+							)}
 
-						<Card
-							className="border-0 shadow-sm cursor-pointer transition-all duration-200 hover:shadow-md hover:scale-105"
-							onClick={() => handleCardClick("/audit-logs")}>
-							<CardContent className="p-4">
-								<div className="flex items-center justify-between">
-									<div>
-										<p className="text-sm text-muted-foreground">Audit Logs</p>
-										<p className="text-2xl font-bold text-indigo-600">
-											{stats.totalAuditLogs}
-										</p>
-									</div>
-									<div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-										<FileText className="w-5 h-5 text-indigo-600" />
-									</div>
-								</div>
-							</CardContent>
-						</Card>
+							{hasPermission(user, "user:manage") && (
+								<Card
+									className="border-0 shadow-sm cursor-pointer transition-all duration-200 hover:shadow-md hover:scale-105"
+									onClick={() => handleCardClick("/audit-logs")}>
+									<CardContent className="p-4">
+										<div className="flex items-center justify-between">
+											<div>
+												<p className="text-sm text-muted-foreground">
+													Audit Logs
+												</p>
+												<p className="text-2xl font-bold text-indigo-600">
+													{stats.totalAuditLogs}
+												</p>
+											</div>
+											<div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+												<FileText className="w-5 h-5 text-indigo-600" />
+											</div>
+										</div>
+									</CardContent>
+								</Card>
+							)}
+						</div>
 					</div>
-				</div>
+				)
 			)}
 
 			{/* Dashboard Cards Grid */}
