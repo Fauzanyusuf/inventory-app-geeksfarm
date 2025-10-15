@@ -21,9 +21,11 @@ const StockMovementFilterForm = memo(() => {
 	const [searchValue, setSearchValue] = useState(getParam("search") || "");
 	const debouncedSearchValue = useDebounce(searchValue, 500);
 
+	// Update search param when debounced value changes
 	useEffect(() => {
 		updateParam("search", debouncedSearchValue);
-	}, [debouncedSearchValue, updateParam]);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [debouncedSearchValue]); // Don't include updateParam to avoid infinite loop
 
 	const handleFilterSubmit = useCallback(
 		(e) => {

@@ -30,9 +30,11 @@ const StockMovements = () => {
 		meta,
 		loading,
 		error,
+		validated,
+		totalPages,
 	} = useResourceData({
 		api: stockMovementsApi.getStockMovements,
-		schema: null, // Basic validation handled in hook
+		schema: null,
 		searchParams,
 		buildParams: buildQueryParams,
 		resourceName: "stock movements",
@@ -74,15 +76,15 @@ const StockMovements = () => {
 					</div>
 
 					{/* Pagination */}
-					{!loading && movements && movements.length > 0 && (
+					{meta && validated && (
 						<div className="bg-card px-4 py-3 border-t border-border sm:px-6 flex-shrink-0">
 							<Pagination
-								currentPage={meta?.page || 1}
-								totalPages={meta?.totalPages || 1}
+								currentPage={meta.page || 1}
+								totalPages={totalPages}
+								totalItems={meta.total || meta.totalItems || movements.length}
+								pageSize={validated.limit || 20}
 								onPageChange={handlePageChange}
 								onPageSizeChange={handlePageSizeChange}
-								pageSize={meta?.limit || 10}
-								totalItems={meta?.total || 0}
 							/>
 						</div>
 					)}

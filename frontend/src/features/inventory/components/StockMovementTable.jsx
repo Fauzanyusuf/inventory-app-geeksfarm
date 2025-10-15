@@ -165,110 +165,104 @@ const StockMovementTable = memo(({ movements, loading }) => {
 	}
 
 	return (
-		<div className="rounded-md border">
-			<Table>
-				<TableHeader>
-					<TableRow>
-						<TableHead className="w-[200px]">Product</TableHead>
-						<TableHead className="w-[120px]">Movement</TableHead>
-						<TableHead className="w-[100px] text-right">Quantity</TableHead>
-						<TableHead className="w-[150px]">Batch Status</TableHead>
-						<TableHead className="w-[120px]">Expiry</TableHead>
-						<TableHead className="w-[200px]">Note</TableHead>
-						<TableHead className="w-[140px]">Date</TableHead>
-					</TableRow>
-				</TableHeader>
-				<TableBody>
-					{movements.map((movement) => (
-						<TableRow
-							key={movement.id}
-							className="hover:bg-muted/50 cursor-pointer"
-							onClick={() =>
-								handleProductClick(
-									movement.product?.id,
-									movement.productBatch?.id
-								)
-							}>
-							<TableCell>
-								<div className="space-y-1">
-									<div className="font-medium text-sm">
-										{movement.product?.name || "Unknown Product"}
-									</div>
-									{movement.product?.barcode && (
-										<div className="text-xs text-muted-foreground font-mono">
-											{movement.product.barcode}
-										</div>
-									)}
+		<Table>
+			<TableHeader>
+				<TableRow>
+					<TableHead className="w-[200px]">Product</TableHead>
+					<TableHead className="w-[120px]">Movement</TableHead>
+					<TableHead className="w-[100px] text-right">Quantity</TableHead>
+					<TableHead className="w-[150px]">Batch Status</TableHead>
+					<TableHead className="w-[120px]">Expiry</TableHead>
+					<TableHead className="w-[200px]">Note</TableHead>
+					<TableHead className="w-[140px]">Date</TableHead>
+				</TableRow>
+			</TableHeader>
+			<TableBody>
+				{movements.map((movement) => (
+					<TableRow
+						key={movement.id}
+						className="hover:bg-muted/50 cursor-pointer"
+						onClick={() =>
+							handleProductClick(
+								movement.product?.id,
+								movement.productBatch?.id
+							)
+						}>
+						<TableCell>
+							<div className="space-y-1">
+								<div className="font-medium text-sm">
+									{movement.product?.name || "Unknown Product"}
 								</div>
-							</TableCell>
-							<TableCell>
-								{getMovementTypeBadge(movement.movementType, movement.quantity)}
-							</TableCell>
-							<TableCell className="text-right">
-								<span
-									className={`font-medium ${
-										movement.movementType === "IN"
+								{movement.product?.barcode && (
+									<div className="text-xs text-muted-foreground font-mono">
+										{movement.product.barcode}
+									</div>
+								)}
+							</div>
+						</TableCell>
+						<TableCell>
+							{getMovementTypeBadge(movement.movementType, movement.quantity)}
+						</TableCell>
+						<TableCell className="text-right">
+							<span
+								className={`font-medium ${
+									movement.movementType === "IN"
+										? "text-green-600"
+										: movement.movementType === "OUT"
+										? "text-red-600"
+										: movement.movementType === "ADJUSTMENT"
+										? movement.quantity >= 0
 											? "text-green-600"
-											: movement.movementType === "OUT"
-											? "text-red-600"
-											: movement.movementType === "ADJUSTMENT"
-											? movement.quantity >= 0
-												? "text-green-600"
-												: "text-red-600"
-											: "text-yellow-600"
+											: "text-red-600"
+										: "text-yellow-600"
+								}`}>
+								{formatQuantity(movement.quantity, movement.movementType)}
+							</span>
+						</TableCell>
+						<TableCell>
+							{movement.productBatch ? (
+								getBatchStatusBadge(movement.productBatch.status)
+							) : (
+								<span className="text-xs text-muted-foreground">No batch</span>
+							)}
+						</TableCell>
+						<TableCell>
+							{movement.productBatch?.expiredAt ? (
+								<span
+									className={`text-xs ${
+										new Date(movement.productBatch.expiredAt) <= new Date()
+											? "text-red-600 font-medium"
+											: new Date(movement.productBatch.expiredAt) <=
+											  new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+											? "text-yellow-600 font-medium"
+											: "text-muted-foreground"
 									}`}>
-									{formatQuantity(movement.quantity, movement.movementType)}
+									{formatExpiryDate(movement.productBatch.expiredAt)}
 								</span>
-							</TableCell>
-							<TableCell>
-								{movement.productBatch ? (
-									getBatchStatusBadge(movement.productBatch.status)
-								) : (
-									<span className="text-xs text-muted-foreground">
-										No batch
-									</span>
-								)}
-							</TableCell>
-							<TableCell>
-								{movement.productBatch?.expiredAt ? (
-									<span
-										className={`text-xs ${
-											new Date(movement.productBatch.expiredAt) <= new Date()
-												? "text-red-600 font-medium"
-												: new Date(movement.productBatch.expiredAt) <=
-												  new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-												? "text-yellow-600 font-medium"
-												: "text-muted-foreground"
-										}`}>
-										{formatExpiryDate(movement.productBatch.expiredAt)}
-									</span>
-								) : (
-									<span className="text-xs text-muted-foreground">
-										No expiry
-									</span>
-								)}
-							</TableCell>
-							<TableCell>
-								{movement.note ? (
-									<div
-										className="text-xs text-muted-foreground max-w-[180px] truncate"
-										title={movement.note}>
-										{movement.note}
-									</div>
-								) : (
-									<span className="text-xs text-muted-foreground">-</span>
-								)}
-							</TableCell>
-							<TableCell>
-								<div className="text-xs text-muted-foreground">
-									{formatDate(movement.createdAt)}
+							) : (
+								<span className="text-xs text-muted-foreground">No expiry</span>
+							)}
+						</TableCell>
+						<TableCell>
+							{movement.note ? (
+								<div
+									className="text-xs text-muted-foreground max-w-[180px] truncate"
+									title={movement.note}>
+									{movement.note}
 								</div>
-							</TableCell>
-						</TableRow>
-					))}
-				</TableBody>
-			</Table>
-		</div>
+							) : (
+								<span className="text-xs text-muted-foreground">-</span>
+							)}
+						</TableCell>
+						<TableCell>
+							<div className="text-xs text-muted-foreground">
+								{formatDate(movement.createdAt)}
+							</div>
+						</TableCell>
+					</TableRow>
+				))}
+			</TableBody>
+		</Table>
 	);
 });
 

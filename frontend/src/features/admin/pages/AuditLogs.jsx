@@ -215,14 +215,16 @@ const AuditLogs = () => {
 
 							{/* Pagination */}
 							<div className="bg-card px-4 py-3 border-t border-border sm:px-6 flex-shrink-0">
-								<Pagination
-									currentPage={validated?.page || 1}
-									totalPages={totalPages}
-									onPageChange={handlePageChange}
-									onPageSizeChange={handlePageSizeChange}
-									pageSize={validated?.limit || 10}
-									totalItems={meta?.total || 0}
-								/>
+								{meta && validated && (
+									<Pagination
+										currentPage={meta.page || 1}
+										totalPages={totalPages}
+										totalItems={meta.total || meta.totalItems || logs.length}
+										pageSize={validated.limit || 20}
+										onPageChange={handlePageChange}
+										onPageSizeChange={handlePageSizeChange}
+									/>
+								)}
 							</div>
 						</>
 					) : (
