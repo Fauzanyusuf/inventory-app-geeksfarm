@@ -18,6 +18,17 @@ function getBatchStatus(expiredAt, quantity) {
 		: "AVAILABLE";
 }
 
+async function checkAndUpdateExpiredBatches() {
+	const now = new Date();
+	await prisma.productBatch.updateMany({
+		where: {
+			status: "AVAILABLE",
+			expiredAt: { lte: now }
+		},
+		data: { status: "EXPIRED" }
+	});
+}
+
 async function buildSortingCriteria(sortBy, sortOrder, where) {
 	const orderBy = {};
 
@@ -289,6 +300,8 @@ async function createSingleProduct(
 
 async function listProducts(filters = {}) {
 	try {
+		await checkAndUpdateExpiredBatches();
+
 		const {
 			page = 1,
 			limit = 10,
@@ -335,6 +348,8 @@ async function listProducts(filters = {}) {
 
 async function getProductById(id) {
 	try {
+		await checkAndUpdateExpiredBatches();
+
 		const product = await prisma.product.findUnique({
 			where: { id, isDeleted: false },
 			select: {
