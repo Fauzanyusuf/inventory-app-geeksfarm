@@ -13,14 +13,13 @@ import {
 import { createAuditLog } from "../utils/audit-utils.js";
 import { ResponseError } from "../utils/response-error.js";
 
+import sharpLib from "sharp";
+
 async function processFile(fileInfo) {
   const imageUrl = generateImageUrl(fileInfo.filename);
   let thumbUrl = null;
 
   try {
-    const sharpModule = await import("sharp");
-    const sharpLib = sharpModule.default || sharpModule;
-
     const inputPath = fileInfo.path || path.join(uploadsDir, fileInfo.filename);
     const ext = fileInfo.filename?.includes(".")
       ? fileInfo.filename.split(".").pop()
@@ -29,11 +28,12 @@ async function processFile(fileInfo) {
       ? fileInfo.filename.replace(/\.[^/.]+$/, "")
       : String(Date.now());
 
-    let resizedBuffer;
+    const thumbName = `${baseName}-thumb.${ext}`;
+    const thumbPath = path.join(uploadsDir, thumbName);
+
+    // Process image and create thumbnail directly to file (more memory efficient than .toBuffer())
     if (fileInfo.buffer) {
-      resizedBuffer = await sharpLib(fileInfo.buffer)
-        .resize({ width: 1200, withoutEnlargement: true })
-        .toBuffer();
+      await sharpLib(fileInfo.buffer).resize(200).toFile(thumbPath);
     } else {
       try {
         await fs.access(inputPath);
@@ -41,19 +41,14 @@ async function processFile(fileInfo) {
         logger.warn(`processFile input missing for file ${fileInfo.filename}`);
         return { url: imageUrl, thumbnailUrl: null };
       }
-      resizedBuffer = await sharpLib(inputPath)
-        .resize({ width: 1200, withoutEnlargement: true })
-        .toBuffer();
+      await sharpLib(inputPath).resize(200).toFile(thumbPath);
     }
 
-    const thumbName = `${baseName}-thumb.${ext}`;
-    const thumbPath = path.join(uploadsDir, thumbName);
-    await sharpLib(resizedBuffer).resize(200).toFile(thumbPath);
     thumbUrl = generateImageUrl(thumbName);
     logger.info(`Created thumbnail ${thumbPath}`);
   } catch (err) {
     logger.warn(
-      `processFile error for file ${fileInfo.filename}: ${err.stack || err}`
+      `processFile error for file ${fileInfo.filename}: ${err.stack || err}`,
     );
     thumbUrl = null;
   }
@@ -98,7 +93,7 @@ export async function replaceOneToOneImage(
   ownerType,
   ownerId,
   fileInfo,
-  actorUserId = null
+  actorUserId = null,
 ) {
   const processed = await processFile(fileInfo);
 
@@ -231,7 +226,9 @@ export async function replaceOneToOneImage(
       altText: txResult.image.altText,
       createdAt: txResult.image.createdAt,
     },
-    prevImage: txResult.prevImage ? absoluteImageObject(txResult.prevImage) : null,
+    prevImage: txResult.prevImage
+      ? absoluteImageObject(txResult.prevImage)
+      : null,
     owner: txResult.updatedOwner,
     fileCleanup,
   };
@@ -241,7 +238,7 @@ async function processAndCreateImage(
   fileInfo,
   actorUserId = null,
   options = {},
-  tx = null
+  tx = null,
 ) {
   const processed = await processFile(fileInfo);
 
@@ -264,14 +261,19 @@ export async function processAndCreateImages(
   filesInfo,
   actorUserId = null,
   options = {},
-  tx = null
+  tx = null,
 ) {
   if (!Array.isArray(filesInfo))
     throw new ResponseError(400, "filesInfo must be an array");
 
   const results = [];
   for (const fileInfo of filesInfo) {
-    const result = await processAndCreateImage(fileInfo, actorUserId, options, tx);
+    const result = await processAndCreateImage(
+      fileInfo,
+      actorUserId,
+      options,
+      tx,
+    );
     results.push(result);
   }
 
@@ -344,7 +346,7 @@ export async function deleteImage(id, userId = null) {
     logger.info(
       `Image deleted: ${id}, file cleanup: ${
         fileCleanup.success ? "success" : "partial"
-      }`
+      }`,
     );
 
     return { image, fileCleanup };
