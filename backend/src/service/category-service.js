@@ -2,381 +2,386 @@ import { prisma } from "../application/database.js";
 import { logger } from "../application/logging.js";
 import { createAuditLog } from "../utils/audit-utils.js";
 import {
-	cleanupFilesOnError,
-	deleteFile,
-	absoluteImageObject,
+  cleanupFilesOnError,
+  deleteFile,
+  absoluteImageObject,
 } from "../utils/image-utils.js";
 import { ResponseError } from "../utils/response-error.js";
 import { deleteImage, replaceOneToOneImage } from "./image-service.js";
 
 async function createCategory(data, file = null, userId = null) {
-	try {
-		const existing = await prisma.category.findFirst({
-			where: { name: data.name, isDeleted: false },
-		});
+  try {
+    const existing = await prisma.category.findFirst({
+      where: { name: data.name, isDeleted: false },
+    });
 
-		if (existing) {
-			throw new ResponseError(409, "Category name already exists");
-		}
+    if (existing) {
+      throw new ResponseError(409, "Category name already exists");
+    }
 
-		const result = await prisma.$transaction(async (tx) => {
-			const category = await tx.category.create({
-				data,
-				select: {
-					id: true,
-					name: true,
-					description: true,
-				},
-			});
+    const result = await prisma.$transaction(async (tx) => {
+      const category = await tx.category.create({
+        data,
+        select: {
+          id: true,
+          name: true,
+          description: true,
+        },
+      });
 
-			await createAuditLog(tx, {
-				action: "CREATE",
-				entity: "Category",
-				entityId: category.id,
-				newValues: category,
-				userId,
-			});
-			return category;
-		});
+      await createAuditLog(tx, {
+        action: "CREATE",
+        entity: "Category",
+        entityId: category.id,
+        newValues: category,
+        userId,
+      });
+      return category;
+    });
 
-		let imageResult = null;
-		if (file) {
-			imageResult = await replaceOneToOneImage(
-				"category",
-				result.id,
-				file,
-				userId
-			);
-		}
+    let imageResult = null;
+    if (file) {
+      imageResult = await replaceOneToOneImage(
+        "category",
+        result.id,
+        file,
+        userId,
+      );
+    }
 
-		return { category: result, image: imageResult?.image ?? null };
-	} catch (err) {
-		logger.error("Category creation error:", err);
-		if (file) await cleanupFilesOnError([file]);
-		if (err instanceof ResponseError) throw err;
-		throw new ResponseError(500, "Failed to create category: Server error");
-	}
+    return { category: result, image: imageResult?.image ?? null };
+  } catch (err) {
+    logger.error("Category creation error:", err);
+    if (file) await cleanupFilesOnError([file]);
+    if (err instanceof ResponseError) throw err;
+    throw new ResponseError(500, "Failed to create category: Server error");
+  }
 }
 
-async function listCategories({ page = 1, limit = 10, search }) {
-	try {
-		const skip = limit === 0 ? 0 : (page - 1) * limit;
-		const take = limit === 0 ? undefined : limit;
-		const where = { isDeleted: false };
+async function listCategories(filters = {}) {
+  try {
+    let { page = 1, limit = 10, search } = filters;
+    if (limit <= 0) limit = 10;
+    if (limit > 100) limit = 100;
 
-		if (search) {
-			where.name = { contains: search, mode: "insensitive" };
-		}
+    const skip = (page - 1) * limit;
+    const take = limit;
+    const where = { isDeleted: false };
 
-		const [categories, total] = await Promise.all([
-			prisma.category.findMany({
-				where,
-				skip,
-				take,
-				orderBy: { name: "asc" },
-				select: {
-					id: true,
-					name: true,
-					description: true,
-					image: {
-						select: { id: true, url: true, thumbnailUrl: true, altText: true },
-					},
-				},
-			}),
-			prisma.category.count({ where }),
-		]);
+    if (search) {
+      where.name = { contains: search, mode: "insensitive" };
+    }
 
-		const totalPages = limit === 0 ? 1 : Math.ceil(total / limit) || 1;
+    const [categories, total] = await Promise.all([
+      prisma.category.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { name: "asc" },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          image: {
+            select: { id: true, url: true, thumbnailUrl: true, altText: true },
+          },
+        },
+      }),
+      prisma.category.count({ where }),
+    ]);
 
-		const converted = categories.map((c) => {
-			if (c.image) c.image = absoluteImageObject(c.image);
-			return c;
-		});
+    const totalPages = limit === 0 ? 1 : Math.ceil(total / limit) || 1;
 
-		return { data: converted, meta: { total, page, limit, totalPages } };
-	} catch (error) {
-		logger.error("Category list error:", error);
-		throw new ResponseError(500, "Failed to retrieve categories");
-	}
+    const converted = categories.map((c) => {
+      if (c.image) c.image = absoluteImageObject(c.image);
+      return c;
+    });
+
+    return { data: converted, meta: { total, page, limit, totalPages } };
+  } catch (error) {
+    logger.error("Category list error:", error);
+    throw new ResponseError(500, "Failed to retrieve categories");
+  }
 }
 
 async function getCategoryById(id) {
-	try {
-		const result = await prisma.category.findUnique({
-			where: { id, isDeleted: false },
-			omit: {
-				isDeleted: true,
-				imageId: true,
-			},
-			include: {
-				image: {
-					select: { id: true, url: true, thumbnailUrl: true },
-				},
-				products: {
-					where: { isDeleted: false },
-					select: {
-						id: true,
-						name: true,
-						barcode: true,
-						sellingPrice: true,
-						unit: true,
-						batches: {
-							select: { quantity: true },
-							where: { status: "AVAILABLE" },
-						},
-					},
-				},
-			},
-		});
+  try {
+    const result = await prisma.category.findUnique({
+      where: { id, isDeleted: false },
+      omit: {
+        isDeleted: true,
+        imageId: true,
+      },
+      include: {
+        image: {
+          select: { id: true, url: true, thumbnailUrl: true },
+        },
+        products: {
+          where: { isDeleted: false },
+          select: {
+            id: true,
+            name: true,
+            barcode: true,
+            sellingPrice: true,
+            unit: true,
+            batches: {
+              select: { quantity: true },
+              where: { status: "AVAILABLE" },
+            },
+          },
+        },
+      },
+    });
 
-		if (!result) {
-			throw new ResponseError(404, "Category not found");
-		}
+    if (!result) {
+      throw new ResponseError(404, "Category not found");
+    }
 
-		if (result && Array.isArray(result.products)) {
-			result.products = result.products.map((p) => {
-				const totalQuantity = (p.batches || []).reduce(
-					(sum, b) => sum + (b.quantity || 0),
-					0
-				);
-				const { batches: _batches, ...rest } = p;
-				return { ...rest, totalQuantity };
-			});
-		}
+    if (result && Array.isArray(result.products)) {
+      result.products = result.products.map((p) => {
+        const totalQuantity = (p.batches || []).reduce(
+          (sum, b) => sum + (b.quantity || 0),
+          0,
+        );
+        const { batches: _batches, ...rest } = p;
+        return { ...rest, totalQuantity };
+      });
+    }
 
-		logger.info("Category retrieved:", result);
-		return result;
-	} catch (error) {
-		if (error instanceof ResponseError) throw error;
-		logger.error("Category retrieval error:", error);
-		throw new ResponseError(500, "Failed to retrieve category");
-	}
+    logger.info("Category retrieved:", result);
+    return result;
+  } catch (error) {
+    if (error instanceof ResponseError) throw error;
+    logger.error("Category retrieval error:", error);
+    throw new ResponseError(500, "Failed to retrieve category");
+  }
 }
 
 async function updateCategory(id, data, userId = null) {
-	try {
-		const oldRecord = await prisma.category.findUnique({
-			where: { id, isDeleted: false },
-		});
+  try {
+    const oldRecord = await prisma.category.findUnique({
+      where: { id, isDeleted: false },
+    });
 
-		if (!oldRecord) {
-			throw new ResponseError(404, "Category not found");
-		}
+    if (!oldRecord) {
+      throw new ResponseError(404, "Category not found");
+    }
 
-		const existing = await prisma.category.findFirst({
-			where: { name: data.name, isDeleted: false, id: { not: id } },
-		});
+    const existing = await prisma.category.findFirst({
+      where: { name: data.name, isDeleted: false, id: { not: id } },
+    });
 
-		if (existing) {
-			throw new ResponseError(409, "Category name already exists");
-		}
+    if (existing) {
+      throw new ResponseError(409, "Category name already exists");
+    }
 
-		const result = await prisma.$transaction(async (tx) => {
-			const updated = await tx.category.update({
-				where: { id },
-				data: {
-					...data,
-					updatedAt: new Date(),
-				},
-				omit: { isDeleted: true },
-			});
+    const result = await prisma.$transaction(async (tx) => {
+      const updated = await tx.category.update({
+        where: { id },
+        data: {
+          ...data,
+          updatedAt: new Date(),
+        },
+        omit: { isDeleted: true },
+      });
 
-			if (userId) {
-				await createAuditLog(tx, {
-					userId,
-					action: "UPDATE",
-					entity: "Category",
-					entityId: id,
-					oldValues: oldRecord,
-					newValues: updated,
-				});
-			}
+      if (userId) {
+        await createAuditLog(tx, {
+          userId,
+          action: "UPDATE",
+          entity: "Category",
+          entityId: id,
+          oldValues: oldRecord,
+          newValues: updated,
+        });
+      }
 
-			return updated;
-		});
+      return updated;
+    });
 
-		logger.info("Category updated:", result);
-		return result;
-	} catch (error) {
-		if (error instanceof ResponseError) throw error;
-		logger.error("Category update error:", error);
-		throw new ResponseError(500, "Failed to update category");
-	}
+    logger.info("Category updated:", result);
+    return result;
+  } catch (error) {
+    if (error instanceof ResponseError) throw error;
+    logger.error("Category update error:", error);
+    throw new ResponseError(500, "Failed to update category");
+  }
 }
 
 async function deleteCategory(id, userId = null) {
-	try {
-		const oldRecord = await prisma.category.findUnique({
-			where: { id, isDeleted: false },
-		});
+  try {
+    const oldRecord = await prisma.category.findUnique({
+      where: { id, isDeleted: false },
+    });
 
-		if (!oldRecord) {
-			throw new ResponseError(404, "Category not found");
-		}
+    if (!oldRecord) {
+      throw new ResponseError(404, "Category not found");
+    }
 
-		const result = await prisma.$transaction(async (tx) => {
-			// First, update all products that reference this category to set categoryId to null
-			const updatedProducts = await tx.product.updateMany({
-				where: {
-					categoryId: id,
-					isDeleted: false,
-				},
-				data: {
-					categoryId: null,
-				},
-			});
+    const result = await prisma.$transaction(async (tx) => {
+      // First, update all products that reference this category to set categoryId to null
+      const updatedProducts = await tx.product.updateMany({
+        where: {
+          categoryId: id,
+          isDeleted: false,
+        },
+        data: {
+          categoryId: null,
+        },
+      });
 
-			logger.info(
-				`Updated ${updatedProducts.count} products to remove category reference`
-			);
+      logger.info(
+        `Updated ${updatedProducts.count} products to remove category reference`,
+      );
 
-			// Then soft delete the category
-			const deleted = await tx.category.update({
-				where: { id },
-				data: {
-					isDeleted: true,
-				},
-			});
+      // Then soft delete the category
+      const deleted = await tx.category.update({
+        where: { id },
+        data: {
+          isDeleted: true,
+        },
+      });
 
-			if (userId) {
-				await createAuditLog(tx, {
-					userId,
-					action: "DELETE",
-					entity: "Category",
-					entityId: id,
-					oldValues: oldRecord,
-					newValues: {
-						...deleted,
-						affectedProducts: updatedProducts.count,
-					},
-				});
-			}
+      if (userId) {
+        await createAuditLog(tx, {
+          userId,
+          action: "DELETE",
+          entity: "Category",
+          entityId: id,
+          oldValues: oldRecord,
+          newValues: {
+            ...deleted,
+            affectedProducts: updatedProducts.count,
+          },
+        });
+      }
 
-			return {
-				...deleted,
-				affectedProducts: updatedProducts.count,
-			};
-		});
+      return {
+        ...deleted,
+        affectedProducts: updatedProducts.count,
+      };
+    });
 
-		logger.info(
-			`Category soft deleted: ${result.id}, affected products: ${result.affectedProducts}`
-		);
-		return result;
-	} catch (error) {
-		if (error instanceof ResponseError) throw error;
-		logger.error("Category delete error:", error);
-		throw new ResponseError(500, "Failed to delete category");
-	}
+    logger.info(
+      `Category soft deleted: ${result.id}, affected products: ${result.affectedProducts}`,
+    );
+    return result;
+  } catch (error) {
+    if (error instanceof ResponseError) throw error;
+    logger.error("Category delete error:", error);
+    throw new ResponseError(500, "Failed to delete category");
+  }
 }
 
 async function uploadCategoryImage(id, fileInfo, userId = null) {
-	try {
-		const category = await prisma.category.findUnique({
-			where: { id, isDeleted: false },
-			select: { id: true },
-		});
+  try {
+    const category = await prisma.category.findUnique({
+      where: { id, isDeleted: false },
+      select: { id: true },
+    });
 
-		if (!category) {
-			await deleteFile(fileInfo.filename);
-			throw new ResponseError(404, "Category not found");
-		}
+    if (!category) {
+      await deleteFile(fileInfo.filename);
+      throw new ResponseError(404, "Category not found");
+    }
 
-		const result = await replaceOneToOneImage(
-			"category",
-			id,
-			fileInfo,
-			userId,
-			{
-				imageField: "imageId",
-			}
-		);
+    const result = await replaceOneToOneImage(
+      "category",
+      id,
+      fileInfo,
+      userId,
+      {
+        imageField: "imageId",
+      },
+    );
 
-		return result.image;
-	} catch (err) {
-		if (err instanceof ResponseError) throw err;
-		throw new ResponseError(
-			500,
-			`Failed to upload category image: ${err.message}`
-		);
-	}
+    return result.image;
+  } catch (err) {
+    if (err instanceof ResponseError) throw err;
+    throw new ResponseError(
+      500,
+      `Failed to upload category image: ${err.message}`,
+    );
+  }
 }
 
 async function getCategoryImage(categoryId) {
-	try {
-		const result = await prisma.category.findUnique({
-			where: { id: categoryId, isDeleted: false },
-			select: {
-				id: true,
-				name: true,
-				image: { omit: { productId: true } },
-			},
-		});
+  try {
+    const result = await prisma.category.findUnique({
+      where: { id: categoryId, isDeleted: false },
+      select: {
+        id: true,
+        name: true,
+        image: { omit: { productId: true } },
+      },
+    });
 
-		if (!result) {
-			throw new ResponseError(404, "Category not found");
-		}
+    if (!result) {
+      throw new ResponseError(404, "Category not found");
+    }
 
-		if (!result.image) {
-			return null;
-		}
+    if (!result.image) {
+      return null;
+    }
 
-		logger.info(`Retrieved image for category: ${categoryId}`);
+    logger.info(`Retrieved image for category: ${categoryId}`);
 
-		return absoluteImageObject(result.image);
-	} catch (err) {
-		if (err instanceof ResponseError) throw err;
-		logger.error(
-			`Error getting image for category ${categoryId}: ${err.message}`
-		);
-		throw new ResponseError(
-			500,
-			`Failed to get category image: ${err.message}`
-		);
-	}
+    return absoluteImageObject(result.image);
+  } catch (err) {
+    if (err instanceof ResponseError) throw err;
+    logger.error(
+      `Error getting image for category ${categoryId}: ${err.message}`,
+    );
+    throw new ResponseError(
+      500,
+      `Failed to get category image: ${err.message}`,
+    );
+  }
 }
 
 async function deleteCategoryImage(categoryId, userId = null) {
-	try {
-		const category = await prisma.category.findUnique({
-			where: { id: categoryId, isDeleted: false },
-			select: { imageId: true },
-		});
+  try {
+    const category = await prisma.category.findUnique({
+      where: { id: categoryId, isDeleted: false },
+      select: { imageId: true },
+    });
 
-		if (!category) {
-			throw new ResponseError(404, "Category not found");
-		}
+    if (!category) {
+      throw new ResponseError(404, "Category not found");
+    }
 
-		if (!category.imageId) {
-			throw new ResponseError(404, "Category has no image");
-		}
+    if (!category.imageId) {
+      throw new ResponseError(404, "Category has no image");
+    }
 
-		await deleteImage(category.imageId, userId);
+    await deleteImage(category.imageId, userId);
 
-		await prisma.category.update({
-			where: { id: categoryId },
-			data: { imageId: null },
-		});
+    await prisma.category.update({
+      where: { id: categoryId },
+      data: { imageId: null },
+    });
 
-		logger.info(`Deleted image for category: ${categoryId}`);
-	} catch (err) {
-		if (err instanceof ResponseError) throw err;
-		logger.error(
-			`Error deleting image for category ${categoryId}: ${err.message}`
-		);
-		throw new ResponseError(
-			500,
-			`Failed to delete category image: ${err.message}`
-		);
-	}
+    logger.info(`Deleted image for category: ${categoryId}`);
+  } catch (err) {
+    if (err instanceof ResponseError) throw err;
+    logger.error(
+      `Error deleting image for category ${categoryId}: ${err.message}`,
+    );
+    throw new ResponseError(
+      500,
+      `Failed to delete category image: ${err.message}`,
+    );
+  }
 }
 
+// eslint-disable-next-line import/no-unused-modules
 export default {
-	createCategory,
-	listCategories,
-	getCategoryById,
-	updateCategory,
-	deleteCategory,
-	uploadCategoryImage,
-	getCategoryImage,
-	deleteCategoryImage,
+  createCategory,
+  listCategories,
+  getCategoryById,
+  updateCategory,
+  deleteCategory,
+  uploadCategoryImage,
+  getCategoryImage,
+  deleteCategoryImage,
 };

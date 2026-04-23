@@ -67,8 +67,55 @@ async function buildSortingCriteria(sortBy, sortOrder, where) {
 }
 
 async function getBestSellingProducts(where, skip, take) {
-  const allProducts = await prisma.product.findMany({
+  // 1. Get ONLY product IDs that match the filter (very lightweight)
+  const filteredProducts = await prisma.product.findMany({
     where,
+    select: { id: true },
+  });
+  const productIds = filteredProducts.map((p) => p.id);
+
+  if (productIds.length === 0) {
+    return { products: [], total: 0 };
+  }
+
+  // 2. Aggregate total sales (StockMovement "OUT") per product at the database level
+  const stockMovements = await prisma.stockMovement.groupBy({
+    by: ["productId"],
+    where: {
+      productId: { in: productIds },
+      movementType: "OUT",
+    },
+    _sum: {
+      quantity: true,
+    },
+  });
+
+  // 3. Map total sales to product IDs
+  const soldMap = new Map();
+  for (const movement of stockMovements) {
+    soldMap.set(movement.productId, movement._sum.quantity || 0);
+  }
+
+  // 4. Sort product IDs based on total quantity sold
+  const productsWithSold = productIds.map((id) => ({
+    id,
+    totalSold: soldMap.get(id) || 0,
+  }));
+  productsWithSold.sort((a, b) => b.totalSold - a.totalSold);
+
+  // 5. Paginate the ID list (instant and consumes minimal RAM)
+  const total = productsWithSold.length;
+  const limit = take || total;
+  const paginatedItems = productsWithSold.slice(skip, skip + limit);
+  const paginatedProductIds = paginatedItems.map((p) => p.id);
+
+  if (paginatedProductIds.length === 0) {
+    return { products: [], total };
+  }
+
+  // 6. Fetch full details ONLY for products in the current page
+  const productsData = await prisma.product.findMany({
+    where: { id: { in: paginatedProductIds } },
     select: {
       id: true,
       name: true,
@@ -82,31 +129,18 @@ async function getBestSellingProducts(where, skip, take) {
         where: { status: "AVAILABLE" },
         select: { quantity: true },
       },
-      stockMovements: {
-        where: { movementType: "OUT" },
-        select: { quantity: true },
-      },
     },
   });
 
-  // Calculate total sold for each product and sort
-  const productsWithSold = allProducts
-    .map((product) => {
-      const totalSold = product.stockMovements.reduce(
-        (sum, movement) => sum + movement.quantity,
-        0,
-      );
-      // eslint-disable-next-line no-unused-vars
-      const { stockMovements, ...productWithoutMovements } = product;
-      return { ...productWithoutMovements, totalSold };
-    })
-    .sort((a, b) => b.totalSold - a.totalSold);
-
-  const total = productsWithSold.length;
-  const products = productsWithSold.slice(
-    skip,
-    skip + (take || productsWithSold.length),
-  );
+  // 7. Re-map data and ensure correct sort order
+  const productMap = new Map(productsData.map((p) => [p.id, p]));
+  const products = paginatedItems.map(({ id, totalSold }) => {
+    const product = productMap.get(id);
+    return {
+      ...product,
+      totalSold,
+    };
+  });
 
   return { products, total };
 }
@@ -302,7 +336,7 @@ async function listProducts(filters = {}) {
   try {
     await checkAndUpdateExpiredBatches();
 
-    const {
+    let {
       page = 1,
       limit = 10,
       search,
@@ -313,6 +347,10 @@ async function listProducts(filters = {}) {
       sortOrder = "asc",
     } = filters;
 
+    // Enforce reasonable limits to prevent memory exhaustion
+    if (limit <= 0) limit = 10;
+    if (limit > 100) limit = 100;
+
     const where = buildWhereClause({ search, category, minPrice, maxPrice });
 
     const { orderBy, where: modifiedWhere } = await buildSortingCriteria(
@@ -321,8 +359,8 @@ async function listProducts(filters = {}) {
       where,
     );
 
-    const skip = limit === 0 ? 0 : (page - 1) * limit;
-    const take = limit === 0 ? undefined : limit;
+    const skip = (page - 1) * limit;
+    const take = limit;
 
     const { products, total } =
       sortBy === "best_selling"
